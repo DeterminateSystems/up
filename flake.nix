@@ -64,7 +64,7 @@
             environment = {
               PGDATA = ".state/postgres";
               PGDATABASE = "testing";
-              PGHOST = ".state/postgres";
+              PGHOST = "127.0.0.1";
               PGPORT = "5432";
             };
 
@@ -77,21 +77,19 @@
               };
 
               postgres = {
-                command = ''
-                  postgres
-                '';
+                command = "postgres";
                 depends_on.postgres-setup.condition = "process_completed_successfully";
                 readiness_probe = {
-                  exec.command = "pg_isready -h .state/postgres -p 5432";
+                  exec.command = "pg_isready";
                   initial_delay_seconds = 1;
                   period_seconds = 2;
-                  failure_threshold = 5;
+                  failure_threshold = 100;
                 };
               };
 
               postgres-post-startup = {
                 command = ''
-                  createdb $PGDATABASE 2>/dev/null || true
+                  createdb $PGDATABASE
                 '';
                 depends_on.postgres.condition = "process_healthy";
               };
