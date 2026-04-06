@@ -25,7 +25,10 @@
             inherit system;
             pkgs = import inputs.nixpkgs {
               inherit system;
-              config.allowUnfree = true;
+              config = {
+                allowBroken = true;
+                allowUnfree = true;
+              };
               overlays = [ self.overlays.default ];
             };
           }
@@ -54,11 +57,12 @@
       processTrees = forEachSupportedSystem (
         { pkgs, system }:
         {
-          postgres = pkgs.lib.mkProcessTree {
+          data = pkgs.lib.mkProcessTree {
             description = "Run Postgres locally";
 
             packages = with pkgs; [
-              postgresql
+              (postgresql_18.withPackages (p: with p; [ pg_uuidv7 ]))
+              redis
             ];
 
             environment = {
@@ -90,9 +94,13 @@
               postgres-post-startup = {
                 command = ''
                   createdb $PGDATABASE || true
+
+                  psql -c "CREATE EXTENSION IF NOT EXISTS pg_uuidv7;"
                 '';
                 depends_on.postgres.condition = "process_healthy";
               };
+
+              inherit (self.tasks.${system}) redis;
             };
           };
         }
@@ -120,23 +128,8 @@
                 packages = [ pkgs.editorconfig-checker ];
               };
 
-              inherit (self.tasks.${system}) redis;
+              inherit (self.tasks.${system}) format-sql redis;
             };
-          };
-        }
-      );
-
-      envVars = forEachSupportedSystem (
-        { pkgs, ... }:
-        {
-          minio = {
-            MINIO_ROOT_PASSWORD = "opensesame";
-            MINIO_ROOT_USER = "justme";
-          };
-
-          postgres = {
-            DATABASE_URL = "postgres://postgres@/mydb?host=$PWD/.state/postgres";
-            OPENSSL_DIR = "${pkgs.openssl.dev}";
           };
         }
       );
