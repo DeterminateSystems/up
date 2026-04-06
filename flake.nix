@@ -82,16 +82,16 @@
                 '';
                 depends_on.postgres-setup.condition = "process_completed_successfully";
                 readiness_probe = {
-                  exec.command = "pg_isready";
+                  exec.command = "pg_isready -h .state/postgres -p 5432";
                   initial_delay_seconds = 1;
                   period_seconds = 2;
-                  failure_threshold = 10;
+                  failure_threshold = 5;
                 };
               };
 
               postgres-post-startup = {
                 command = ''
-                  createdb "$PGDATABASE" 2>/dev/null || true
+                  createdb $PGDATABASE 2>/dev/null || true
                 '';
                 depends_on.postgres.condition = "process_healthy";
               };

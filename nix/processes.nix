@@ -216,6 +216,9 @@ let
         }
         // lib.optionalAttrs (config.description != null) {
           inherit (config) description;
+        }
+        // {
+          config = configFile;
         };
     };
 in
