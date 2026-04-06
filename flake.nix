@@ -42,6 +42,7 @@
             packages = with pkgs; [
               self.taskRunners.${system}.default
               self.formatter.${system}
+              self.processTrees.${system}.postgres
             ];
             shellHook = ''
               ${self.taskRunners.${system}.default.shellHook}
@@ -57,7 +58,8 @@
       processTrees = forEachSupportedSystem (
         { pkgs, system }:
         {
-          data = pkgs.lib.mkProcessTree {
+          postgres = pkgs.lib.mkProcessTree {
+            name = "postgres-process-tree";
             description = "Run Postgres locally";
 
             packages = with pkgs; [
