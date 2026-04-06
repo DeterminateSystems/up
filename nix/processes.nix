@@ -106,6 +106,10 @@ let
           type = types.nullOr types.str;
           default = null;
         };
+        package = mkOption {
+          type = types.package;
+          default = pkgs.process-compose;
+        };
         log_level = mkOption {
           type = types.enum [
             "info"
@@ -206,7 +210,7 @@ let
         in
         pkgs.writeShellApplication {
           inherit (config) name;
-          runtimeInputs = [ pkgs.process-compose ];
+          runtimeInputs = [ config.package ];
           text = ''
             export PATH="${lib.concatStringsSep ":" (map (p: "${p}/bin") config.packages)}:$PATH"
 
