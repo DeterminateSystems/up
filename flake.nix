@@ -89,7 +89,7 @@
 
               postgres-post-startup = {
                 command = ''
-                  createdb $PGDATABASE
+                  createdb $PGDATABASE || true
                 '';
                 depends_on.postgres.condition = "process_healthy";
               };
