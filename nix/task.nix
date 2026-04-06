@@ -35,6 +35,7 @@ in
       type = types.either (types.attrsOf types.str) (types.listOf types.str);
       default = { };
     };
+    # generated
     bin = mkOption {
       type = types.str;
       readOnly = true;

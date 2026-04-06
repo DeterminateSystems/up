@@ -9,6 +9,8 @@ args:
 let
   inherit (lib) mkOption types;
 
+  escapeSingleQuote = s: lib.replaceStrings [ "'" ] [ "'\"'\"'" ] s;
+
   runnerModule =
     { config, ... }:
     {
@@ -39,7 +41,9 @@ let
         let
           listLines = lib.concatStringsSep "\n" (
             lib.mapAttrsToList (name: task: ''
-              printf '  %-20s %s\n' '${name}' '${lib.optionalString (task.description != null) task.description}'
+              printf '  %-20s %s\n' '${name}' '${
+                lib.optionalString (task.description != null) escapeSingleQuote task.description
+              }'
             '') config.tasks
           );
 
@@ -58,7 +62,10 @@ let
             text = ''
               if [[ $# -eq 0 || "$1" == "--list" || "$1" == "-l" ]]; then
                 printf '%s - %s\n\n' '${config.name}' '${
-                  if config.description != null then config.description else "Generated task runner"
+                  if config.description != null then
+                    (escapeSingleQuote config.description)
+                  else
+                    "Generated task runner"
                 }'
                 echo "Available tasks:"
                 ${listLines}
@@ -86,7 +93,11 @@ let
                 tasks=(${
                   lib.concatMapStringsSep "" (entry: "\n      ${entry}") (
                     lib.mapAttrsToList (
-                      name: task: if task.description != null then "\"${name}:${task.description}\"" else "\"${name}\""
+                      name: task:
+                      if task.description != null then
+                        "\"${name}:${escapeSingleQuote task.description}\""
+                      else
+                        "\"${name}\""
                     ) config.tasks
                   )
                 }
@@ -117,7 +128,7 @@ let
                 lib.mapAttrsToList (
                   name: task:
                   if task.description != null then
-                    "complete -c ${config.name} -f -a '${name}' -d '${task.description}'"
+                    "complete -c ${config.name} -f -a '${name}' -d '${escapeSingleQuote task.description}'"
                   else
                     "complete -c ${config.name} -f -a '${name}'"
                 ) config.tasks

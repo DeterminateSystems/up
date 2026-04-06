@@ -40,11 +40,11 @@
         {
           default = pkgs.mkShellNoCC {
             packages = with pkgs; [
-              self.taskRunners.${system}.common
+              self.taskRunners.${system}.default
               self.formatter.${system}
             ];
             shellHook = ''
-              ${self.taskRunners.${system}.common.shellHook}
+              ${self.taskRunners.${system}.default.shellHook}
             '';
           };
         }
@@ -109,31 +109,24 @@
       taskRunners = forEachSupportedSystem (
         { pkgs, system }:
         {
-          common = pkgs.lib.mkTaskRunner {
-            name = "act";
-            description = "Common repo tasks";
+          default = pkgs.lib.mkTaskRunner {
+            name = "work";
+            description = "Run linters and formatters";
             packages = with pkgs; [
               editorconfig-checker
               git
               nixfmt
             ];
             tasks = {
+              check-nix-formatting = {
+                description = "Check Nix formatting";
+                command = "git ls-files -z '*.nix' | xargs -0 nixfmt check";
+              };
+
               format-nix = {
-                command = ''
-                  git ls-files -z "*.nix" | xargs -0 nixfmt
-
-                  echo "Nix files properly formatted ❄️ ✅"
-                '';
-
                 description = "Format Nix files";
+                command = "git ls-files -z '*.nix' | xargs -0 nixfmt";
               };
-
-              editorconfig-check = {
-                description = "Check conformance with your EditorConfig configuration";
-                command = "editorconfig-checker";
-              };
-
-              inherit (self.tasks.${system}) format-sql redis;
             };
           };
         }

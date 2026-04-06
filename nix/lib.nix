@@ -19,11 +19,12 @@ in
       ;
   };
   mkTask =
-    attrs:
+    args:
     (lib.evalModules {
       modules = [
         taskModule
-        { config = attrs; }
+        { config._module.args.name = args.name or "task"; }
+        args
       ];
     }).config.drv;
 }
