@@ -112,20 +112,25 @@
           common = pkgs.lib.mkTaskRunner {
             name = "act";
             description = "Common repo tasks";
+            packages = with pkgs; [
+              editorconfig-checker
+              git
+              nixfmt
+            ];
             tasks = {
-              format = {
+              format-nix = {
                 command = ''
                   git ls-files -z "*.nix" | xargs -0 nixfmt
 
                   echo "Nix files properly formatted ❄️ ✅"
                 '';
-                packages = [ pkgs.nixfmt ];
+
                 description = "Format Nix files";
               };
 
               editorconfig-check = {
                 description = "Check conformance with your EditorConfig configuration";
-                packages = [ pkgs.editorconfig-checker ];
+                command = "editorconfig-checker";
               };
 
               inherit (self.tasks.${system}) format-sql redis;

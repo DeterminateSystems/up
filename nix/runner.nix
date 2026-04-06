@@ -21,6 +21,10 @@ let
           type = types.nullOr types.str;
           default = null;
         };
+        packages = mkOption {
+          type = types.listOf types.package;
+          default = [ ];
+        };
         tasks = mkOption {
           type = types.attrsOf (types.submodule taskModule);
           default = { };
@@ -50,6 +54,7 @@ let
 
           dispatcher = pkgs.writeShellApplication {
             inherit (config) name;
+            runtimeInputs = config.packages;
             text = ''
               if [[ $# -eq 0 || "$1" == "--list" || "$1" == "-l" ]]; then
                 printf '%s - %s\n\n' '${config.name}' '${
