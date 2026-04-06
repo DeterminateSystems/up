@@ -26,7 +26,6 @@
             pkgs = import inputs.nixpkgs {
               inherit system;
               config = {
-                allowBroken = true;
                 allowUnfree = true;
               };
               overlays = [ self.overlays.default ];
