@@ -46,6 +46,7 @@
             shellHook = ''
               ${self.taskRunners.${system}.default.shellHook}
             '';
+            env = self.envVars.postgres;
           };
         }
       );
@@ -66,12 +67,7 @@
               redis
             ];
 
-            environment = {
-              PGDATA = ".state/postgres";
-              PGDATABASE = "testing";
-              PGHOST = "127.0.0.1";
-              PGPORT = "5432";
-            };
+            environment = self.envVars.postgres;
 
             processes = {
               postgres-setup = {
@@ -157,6 +153,13 @@
           };
         }
       );
+
+      envVars.postgres = {
+        PGDATA = ".state/postgres";
+        PGDATABASE = "testing";
+        PGHOST = "127.0.0.1";
+        PGPORT = "5432";
+      };
 
       overlays.default = final: prev: {
         lib =
