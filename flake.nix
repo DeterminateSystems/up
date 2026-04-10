@@ -4,6 +4,10 @@
   inputs = {
     nixpkgs.url = "https://flakehub.com/f/NixOS/nixpkgs/0.1";
     flake-schemas.url = "https://flakehub.com/f/DeterminateSystems/flake-schemas/0";
+    fenix = {
+      url = "https://flakehub.com/f/nix-community/fenix/0.1";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
   outputs =
@@ -42,6 +46,12 @@
               self.taskRunners.${system}.default
               self.formatter.${system}
               self.processTrees.${system}.postgres
+              (self.toolchains.${system}.go { version = 25; }).packages
+              (self.toolchains.${system}.rust { channel = "stable"; }).packages
+              (self.toolchains.${system}.python {
+                uv = true;
+              }).packages
+              (self.toolchains.${system}.js { nodejs = true; }).packages
             ];
             shellHook = ''
               ${self.taskRunners.${system}.default.shellHook}
@@ -53,7 +63,7 @@
 
       formatter = forEachSupportedSystem ({ pkgs, ... }: pkgs.nixfmt);
 
-      lib = import ./nix/lib.nix { inherit lib; };
+      lib = import ./lib { inherit lib; };
 
       processTrees = forEachSupportedSystem (
         { pkgs, system }:
@@ -154,6 +164,99 @@
         }
       );
 
+      toolchains = forEachSupportedSystem (
+        { pkgs, system }:
+        {
+          go =
+            {
+              version ? null,
+            }:
+            {
+              packages =
+                if version == null then
+                  pkgs.go
+                else
+                  pkgs.${"go_1_${builtins.replaceStrings [ "." ] [ "_" ] (toString version)}"};
+            };
+
+          js =
+            {
+              nodejs ? false,
+              bun ? false,
+              npm ? false,
+              pnpm ? false,
+            }:
+            {
+              packages = pkgs.symlinkJoin {
+                name = "js-env";
+                paths =
+                  lib.optional nodejs pkgs.nodejs
+                  ++ lib.optional bun pkgs.bun
+                  ++ lib.optional npm pkgs.npm
+                  ++ lib.optional pnpm pkgs.pnpm;
+              };
+            };
+
+          python =
+            {
+              version ? null,
+              uv ? false,
+              venv ? {
+                enable = false;
+                requirements = "";
+              },
+            }:
+            let
+              pythonPkg =
+                if version == null then
+                  pkgs.python3
+                else
+                  pkgs.${"python${builtins.replaceStrings [ "." ] [ "" ] version}"}
+                    or (throw "unknown python version: ${version}");
+            in
+            {
+              packages = pkgs.symlinkJoin {
+                name = "python-env";
+                paths = [ pythonPkg ] ++ lib.optional uv pkgs.uv;
+              };
+
+              shellHook = lib.optionalString (venv.enable or false) ''
+                uv venv .venv
+                ${lib.optionalString (venv.requirements or "" != "") ''
+                  uv pip install ${venv.requirements}
+                ''}
+              '';
+            };
+
+          rust =
+            {
+              stable ? true,
+              channel ? null,
+              targets ? [ ],
+            }:
+            let
+              fenixPkgs = inputs.fenix.packages.${system};
+              ch =
+                if channel != null then
+                  {
+                    "stable" = fenixPkgs.stable;
+                    "nightly" = fenixPkgs.latest;
+                    "beta" = fenixPkgs.beta;
+                  }
+                  .${channel} or (throw "unknown rust channel: ${channel}")
+                else if stable then
+                  fenixPkgs.stable
+                else
+                  fenixPkgs.latest;
+
+              targetStdlibs = map (target: fenixPkgs.targets.${target}.stable.rust-std) targets;
+            in
+            {
+              packages = fenixPkgs.combine ([ ch.toolchain ] ++ targetStdlibs);
+            };
+        }
+      );
+
       envVars.postgres = {
         PGDATA = ".state/postgres";
         PGDATABASE = "testing";
@@ -164,7 +267,7 @@
       overlays.default = final: prev: {
         lib =
           prev.lib
-          // (import ./nix/lib.nix {
+          // (import ./lib {
             inherit (prev) lib;
             pkgs = prev;
           });
@@ -196,6 +299,27 @@
                   evalChecks.isDerivation = lib.isDerivation runner;
                   what = runner.description or "task runner";
                 }) runners;
+              }) output
+            );
+        };
+
+        toolchains = {
+          version = 1;
+          doc = ''
+            The `toolchains` output provides language toolchain builder functions.
+            Each toolchain returns `{ packages, shellHook }`.
+          '';
+          appendSystem = true;
+          inventory =
+            output:
+            inputs.flake-schemas.lib.mkChildren (
+              builtins.mapAttrs (system: toolchains: {
+                forSystems = [ system ];
+                children = builtins.mapAttrs (_name: toolchain: {
+                  forSystems = [ system ];
+                  evalChecks.isFunction = builtins.isFunction toolchain;
+                  what = "language toolchain builder";
+                }) toolchains;
               }) output
             );
         };

@@ -24,6 +24,35 @@ The flake schemas are also helpful:
 }
 ```
 
+## Toolchains
+
+**Toolchains** are configurable sets of tools that you can add to a dev shell.
+
+```nix
+{
+  devShells = forEachSupportedSystem (
+    { pkgs, system }:
+    {
+      default =
+        let
+          pythonToolchain = inputs.up.toolchains.${system}.python { uv = true; };
+          rustToolchain = inputs.up.toolchains.${system}.rust { channel = "nightly"; };
+        in
+        pkgs.mkShell {
+          packages = [
+            pythonToolchain.packages
+            rustToolchain.packages
+          ];
+
+          shellHook = ''
+            ${pythonToolchain.shellHook}
+          '';
+        };
+    }
+  );
+}
+```
+
 ## Process trees
 
 **Process trees** are process-compose configurations built with Nix.
