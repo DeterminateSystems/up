@@ -43,26 +43,32 @@
         {
           default =
             let
-              pythonToolchain = self.toolchains.${system}.python {
+              toolchains = self.toolchains.${system};
+
+              pythonToolchain = toolchains.python {
                 uv = true;
               };
 
-              rustToolchain = self.toolchains.${system}.rust {
+              rustToolchain = toolchains.rust {
                 channel = "stable";
                 envSrcPath = true;
               };
+
+              phpToolchain = toolchains.php { };
             in
             pkgs.mkShellNoCC {
               packages = with pkgs; [
                 self.taskRunners.${system}.default
                 self.formatter.${system}
 
+                phpToolchain.packages
                 pythonToolchain.packages
                 rustToolchain.packages
               ];
               shellHook = ''
                 ${self.taskRunners.${system}.default.shellHook}
                 ${pythonToolchain.shellHook}
+                ${phpToolchain.shellHook}
               '';
               env = rustToolchain.env // self.envVars.postgres;
             };
@@ -203,6 +209,51 @@
                   ++ lib.optional npm pkgs.npm
                   ++ lib.optional pnpm pkgs.pnpm;
               };
+            };
+
+          php =
+            {
+              version ? "8.3",
+              ini ? "",
+              fpm ? {
+                pools = { };
+              },
+            }:
+            let
+              phpPkg =
+                pkgs.${"php${builtins.replaceStrings [ "." ] [ "" ] version}"}
+                  or (throw "unknown php version: ${version}");
+
+              fpmConf = pkgs.writeText "php-fpm.conf" (
+                lib.concatStrings (
+                  lib.mapAttrsToList (
+                    poolName: pool:
+                    ''
+                      [${poolName}]
+                    ''
+                    + lib.concatStrings (lib.mapAttrsToList (k: v: "${k} = ${v}\n") (pool.settings or { }))
+                  ) (fpm.pools or { })
+                )
+              );
+
+              shellHook = lib.optionalString (fpm.pools != { }) ''
+                php-fpm -y ${fpmConf} -D
+                trap "php-fpm -y ${fpmConf} -F -R 2>/dev/null" EXIT
+              '';
+            in
+            {
+              packages =
+                if ini == "" then
+                  phpPkg
+                else
+                  phpPkg.buildEnv {
+                    extraConfig = ini;
+                  };
+              shellHook = lib.optionalString (fpm.pools != { }) ''
+                php-fpm -y ${fpmConf} -D
+                trap "php-fpm -y ${fpmConf} -F -R 2>/dev/null" EXIT
+              '';
+              env = { };
             };
 
           python =
