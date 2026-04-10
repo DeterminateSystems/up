@@ -11,6 +11,46 @@ let
 
   escapeSingleQuote = s: lib.replaceStrings [ "'" ] [ "'\"'\"'" ] s;
 
+  # Topological sort - returns ordered list of task names
+  topoSort =
+    tasks:
+    let
+      taskNames = builtins.attrNames tasks;
+
+      edges = lib.flatten (
+        lib.mapAttrsToList (
+          taskName: task:
+          map (dep: {
+            from = dep;
+            to = taskName;
+          }) task.after
+          ++ map (dep: {
+            from = taskName;
+            to = dep;
+          }) task.before
+        ) tasks
+      );
+
+      sort =
+        remaining: resolvedEdges:
+        let
+          hasUnresolvedDep =
+            name: builtins.any (e: e.to == name && builtins.elem e.from remaining) resolvedEdges;
+          ready = builtins.filter (n: !hasUnresolvedDep n) remaining;
+          rest = builtins.filter (n: hasUnresolvedDep n) remaining;
+        in
+        if remaining == [ ] then
+          [ ]
+        else if ready == [ ] then
+          throw "mkTaskRunner: cycle detected among: ${lib.concatStringsSep ", " remaining}"
+        else
+          ready ++ sort rest (builtins.filter (e: !builtins.elem e.from ready) resolvedEdges);
+    in
+    {
+      ordered = sort taskNames edges;
+      inherit edges;
+    };
+
   runnerModule =
     { config, ... }:
     {
@@ -39,21 +79,65 @@ let
 
       config.drv =
         let
+          topo = topoSort config.tasks;
+          orderedNames = topo.ordered;
+          edges = topo.edges;
+          orderedTasks = map (n: {
+            name = n;
+            task = config.tasks.${n};
+          }) orderedNames;
+
           listLines = lib.concatStringsSep "\n" (
-            lib.mapAttrsToList (name: task: ''
-              printf '  %-20s %s\n' '${name}' '${
-                lib.optionalString (task.description != null) escapeSingleQuote task.description
-              }'
-            '') config.tasks
+            map (
+              { name, task }:
+              ''
+                printf '  %-20s %s\n' '${name}' '${
+                  lib.optionalString (task.description != null) (escapeSingleQuote task.description)
+                }'
+              ''
+            ) orderedTasks
           );
 
           caseArms = lib.concatStringsSep "\n" (
-            lib.mapAttrsToList (name: task: ''
-              ${name})
-                shift
-                exec ${task.bin} "$@"
-                ;;
-            '') config.tasks
+            map (
+              { name, task }:
+              let
+                deps = builtins.filter (
+                  depName: builtins.any (e: e.from == depName && e.to == name) edges
+                ) orderedNames;
+                depSteps = lib.concatStringsSep "\n" (
+                  map (depName: ''
+                    echo "[${depName}] running..."
+                    ${config.tasks.${depName}.bin}
+                  '') deps
+                );
+              in
+              ''
+                ${name})
+                  shift
+                  ${depSteps}
+                  exec ${task.bin} "$@"
+                  ;;
+              ''
+            ) orderedTasks
+          );
+
+          runAllSteps = lib.concatStringsSep "\n" (
+            map (
+              { name, task }:
+              ''
+                echo "[${name}] running..."
+                ${task.bin}
+              ''
+              + lib.optionalString (task.status or null != null) ''
+                if ${task.status}; then
+                  echo "[${name}] skipped (already done)"
+                else
+                  echo "[${name}] running..."
+                  ${task.bin}
+                fi
+              ''
+            ) orderedTasks
           );
 
           dispatcher = pkgs.writeShellApplication {
@@ -69,10 +153,15 @@ let
                 }'
                 echo "Available tasks:"
                 ${listLines}
+                echo ""
+                printf '  %-20s %s\n' '--all' 'Run all tasks in dependency order'
                 exit 0
               fi
 
               case "$1" in
+                --all|-a)
+                  ${runAllSteps}
+                  ;;
                 ${caseArms}
                 *)
                   echo "Unknown task: $1"
@@ -92,13 +181,14 @@ let
                 local -a tasks
                 tasks=(${
                   lib.concatMapStringsSep "" (entry: "\n      ${entry}") (
-                    lib.mapAttrsToList (
-                      name: task:
+                    map (
+                      { name, task }:
                       if task.description != null then
                         "\"${name}:${escapeSingleQuote task.description}\""
                       else
                         "\"${name}\""
-                    ) config.tasks
+                    ) orderedTasks
+                    ++ [ "\"--all:Run all tasks in dependency order\"" ]
                   )
                 }
                 )
@@ -114,7 +204,9 @@ let
             text = ''
               _${config.name}() {
                 local cur=''${COMP_WORDS[COMP_CWORD]}
-                COMPREPLY=($(compgen -W '${lib.concatStringsSep " " (builtins.attrNames config.tasks)}' -- "$cur"))
+                COMPREPLY=($(compgen -W '${
+                  lib.concatStringsSep " " (map ({ name, ... }: name) orderedTasks)
+                } --all' -- "$cur"))
               }
               complete -F _${config.name} ${config.name}
             '';
@@ -125,14 +217,15 @@ let
             destination = "/share/fish/vendor_completions.d/${config.name}.fish";
             text = ''
               ${lib.concatStringsSep "\n" (
-                lib.mapAttrsToList (
-                  name: task:
+                map (
+                  { name, task }:
                   if task.description != null then
                     "complete -c ${config.name} -f -a '${name}' -d '${escapeSingleQuote task.description}'"
                   else
                     "complete -c ${config.name} -f -a '${name}'"
-                ) config.tasks
+                ) orderedTasks
               )}
+              complete -c ${config.name} -f -a '--all' -d 'Run all tasks in dependency order'
             '';
           };
         in

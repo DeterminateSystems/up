@@ -120,12 +120,13 @@
             tasks = {
               check-nix-formatting = {
                 description = "Check Nix formatting";
-                command = "git ls-files -z '*.nix' | xargs -0 nixfmt check";
+                command = "echo 'Checking'; git ls-files -z '*.nix' | xargs -0 nixfmt check";
+                after = [ "format-nix" ]; # run after format-nix
               };
 
               format-nix = {
                 description = "Format Nix files";
-                command = "git ls-files -z '*.nix' | xargs -0 nixfmt";
+                command = "echo 'Formatting'; git ls-files -z '*.nix' | xargs -0 nixfmt";
               };
             };
           };
