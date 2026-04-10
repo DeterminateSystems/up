@@ -41,23 +41,31 @@
       devShells = forEachSupportedSystem (
         { pkgs, system }:
         {
-          default = pkgs.mkShellNoCC {
-            packages = with pkgs; [
-              self.taskRunners.${system}.default
-              self.formatter.${system}
-              self.processTrees.${system}.postgres
-              (self.toolchains.${system}.go { version = 25; }).packages
-              (self.toolchains.${system}.rust { channel = "stable"; }).packages
-              (self.toolchains.${system}.python {
+          default =
+            let
+              pythonToolchain = self.toolchains.${system}.python {
                 uv = true;
-              }).packages
-              (self.toolchains.${system}.js { nodejs = true; }).packages
-            ];
-            shellHook = ''
-              ${self.taskRunners.${system}.default.shellHook}
-            '';
-            env = self.envVars.postgres;
-          };
+              };
+
+              rustToolchain = self.toolchains.${system}.rust {
+                channel = "stable";
+                envSrcPath = true;
+              };
+            in
+            pkgs.mkShellNoCC {
+              packages = with pkgs; [
+                self.taskRunners.${system}.default
+                self.formatter.${system}
+
+                pythonToolchain.packages
+                rustToolchain.packages
+              ];
+              shellHook = ''
+                ${self.taskRunners.${system}.default.shellHook}
+                ${pythonToolchain.shellHook}
+              '';
+              env = rustToolchain.env // self.envVars.postgres;
+            };
         }
       );
 
@@ -233,26 +241,36 @@
               stable ? true,
               channel ? null,
               targets ? [ ],
+              envSrcPath ? false,
             }:
             let
               fenixPkgs = inputs.fenix.packages.${system};
-              ch =
-                if channel != null then
-                  {
-                    "stable" = fenixPkgs.stable;
-                    "nightly" = fenixPkgs.latest;
-                    "beta" = fenixPkgs.beta;
-                  }
-                  .${channel} or (throw "unknown rust channel: ${channel}")
-                else if stable then
-                  fenixPkgs.stable
-                else
-                  fenixPkgs.latest;
+
+              rustToolchain =
+                (
+                  if channel != null then
+                    {
+                      "stable" = fenixPkgs.stable;
+                      "nightly" = fenixPkgs.latest;
+                      "beta" = fenixPkgs.beta;
+                    }
+                    .${channel} or (throw "unknown rust channel: ${channel}")
+                  else if stable then
+                    fenixPkgs.stable
+                  else
+                    fenixPkgs.latest
+                ).toolchain;
 
               targetStdlibs = map (target: fenixPkgs.targets.${target}.stable.rust-std) targets;
+
+              packages = fenixPkgs.combine ([ rustToolchain ] ++ targetStdlibs);
             in
             {
-              packages = fenixPkgs.combine ([ ch.toolchain ] ++ targetStdlibs);
+              env = lib.optionalAttrs envSrcPath {
+                RUST_SRC_PATH = "${rustToolchain}/lib/rustlib/src/rust/library";
+              };
+
+              inherit packages;
             };
         }
       );
