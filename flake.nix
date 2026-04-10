@@ -55,6 +55,14 @@
               };
 
               phpToolchain = toolchains.php { };
+
+              terraformToolchain = toolchains.terraform {
+                plugins = [
+                  "hashicorp_aws"
+                  "hashicorp_google"
+                  "hashicorp_kubernetes"
+                ];
+              };
             in
             pkgs.mkShellNoCC {
               packages = with pkgs; [
@@ -64,6 +72,7 @@
                 phpToolchain.packages
                 pythonToolchain.packages
                 rustToolchain.packages
+                terraformToolchain.packages
               ];
               shellHook = ''
                 ${self.taskRunners.${system}.default.shellHook}
@@ -191,6 +200,21 @@
                   pkgs.go
                 else
                   pkgs.${"go_1_${builtins.replaceStrings [ "." ] [ "_" ] (toString version)}"};
+            };
+
+          terraform =
+            {
+              plugins ? [ ],
+            }:
+            let
+              tfPkg = pkgs.terraform;
+            in
+            {
+              packages = if plugins == [ ] then tfPkg else tfPkg.withPlugins (p: map (name: p.${name}) plugins);
+              shellHook = "";
+              env = {
+                TF_CLI_ARGS = "-no-color";
+              };
             };
 
           js =
