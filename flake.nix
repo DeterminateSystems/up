@@ -242,13 +242,16 @@
           appendSystem = true;
           inventory =
             output:
+            let
+              isEnv = v: builtins.isAttrs v && builtins.all (s: builtins.isString s) (builtins.attrValues v);
+            in
             inputs.flake-schemas.lib.mkChildren (
               builtins.mapAttrs (system: envs: {
                 forSystems = [ system ];
                 children = builtins.mapAttrs (_name: env: {
                   forSystems = [ system ];
                   evalChecks.isAttrs = builtins.isAttrs env;
-                  evalChecks.allStrings = builtins.all (s: builtins.isString s) (builtins.attrValues env);
+                  evalChecks.allStrings = isEnv env;
                   what = "computed environment variable set";
                 }) envs;
               }) output
