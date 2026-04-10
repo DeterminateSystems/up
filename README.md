@@ -154,3 +154,32 @@ To run it:
 ```shell
 nix run ".#taskRunners.<system>.default"
 ```
+
+## Environment variable sets
+
+There are two types of environment variable sets: **static** and **computed**.
+Static sets are attribute sets of strings:
+
+```nix
+{
+  staticEnvVars.postgres = {
+    PGDATA = ".state/postgres";
+    PGDATABASE = "testing";
+    PGHOST = "127.0.0.1";
+    PGPORT = toString 5432;
+  };
+}
+```
+
+Computed sets are system specific and may be based on things like packages in Nixpkgs:
+
+```nix
+computedEnvVars = forEachSupportedSystem (
+  { pkgs, system }:
+  {
+    postgres = {
+      PGSSLCERT = "${pkgs.postgresql}/share/postgresql/root.crt";
+    };
+  }
+);
+```

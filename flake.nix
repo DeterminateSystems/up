@@ -46,6 +46,8 @@
             shellHook = ''
               ${self.taskRunners.${system}.default.shellHook}
             '';
+
+            env = self.computedEnvVars.${system}.openssl;
           };
         }
       );
@@ -54,23 +56,37 @@
 
       lib = import ./nix/lib.nix { inherit lib; };
 
+      staticEnvVars.postgres = {
+        PGDATA = ".state/postgres";
+        PGDATABASE = "testing";
+        PGHOST = "127.0.0.1";
+        PGPORT = "5432";
+      };
+
+      computedEnvVars = forEachSupportedSystem (
+        { pkgs, system }:
+        {
+          openssl = {
+            OPENSSL_DIR = "${pkgs.openssl.dev}";
+            OPENSSL_LIB_DIR = "${pkgs.openssl.out}/lib";
+            OPENSSL_INCLUDE_DIR = "${pkgs.openssl.dev}/include";
+          };
+        }
+      );
+
       processTrees = forEachSupportedSystem (
         { pkgs, system }:
         {
-          data = pkgs.lib.mkProcessTree {
+          postgres = pkgs.lib.mkProcessTree {
             description = "Run Postgres locally";
 
             packages = with pkgs; [
               (postgresql_18.withPackages (p: with p; [ pg_uuidv7 ]))
+              openssl
               redis
             ];
 
-            environment = {
-              PGDATA = ".state/postgres";
-              PGDATABASE = "testing";
-              PGHOST = "127.0.0.1";
-              PGPORT = "5432";
-            };
+            environment = self.staticEnvVars.postgres // self.computedEnvVars.${system}.openssl;
 
             processes = {
               postgres-setup = {
@@ -196,35 +212,46 @@
             );
         };
 
-        envVars = {
+        staticEnvVars = {
           version = 1;
           doc = ''
-            The `envVars` output provides sets of environment variables
+            The `staticEnvVars` output provides sets of environment variables
             that can be sourced into shells or consumed by other tools.
           '';
           inventory =
             output:
             let
               isEnv = v: builtins.isAttrs v && builtins.all (s: builtins.isString s) (builtins.attrValues v);
-              isPerSystem = builtins.all (v: builtins.isAttrs v && !isEnv v) (builtins.attrValues output);
             in
             inputs.flake-schemas.lib.mkChildren (
-              if isPerSystem then
-                builtins.mapAttrs (system: envs: {
+              builtins.mapAttrs (_name: env: {
+                evalChecks.isAttrs = builtins.isAttrs env;
+                evalChecks.allStrings = isEnv env;
+                what = "environment variables set";
+              }) output
+            );
+        };
+
+        computedEnvVars = {
+          version = 1;
+          doc = ''
+            The `computedEnvVars` output provides sets of environment variables
+            that can be sourced into shells or consumed by other tools. Unlike `staticEnvVars`, these
+            sets are system specific and involve some kind of computation (like using packages from Nixpkgs).
+          '';
+          appendSystem = true;
+          inventory =
+            output:
+            inputs.flake-schemas.lib.mkChildren (
+              builtins.mapAttrs (system: envs: {
+                forSystems = [ system ];
+                children = builtins.mapAttrs (_name: env: {
                   forSystems = [ system ];
-                  children = builtins.mapAttrs (_name: env: {
-                    forSystems = [ system ];
-                    evalChecks.isAttrs = builtins.isAttrs env;
-                    evalChecks.allStrings = isEnv env;
-                    what = "environment variable set";
-                  }) envs;
-                }) output
-              else
-                builtins.mapAttrs (_name: env: {
                   evalChecks.isAttrs = builtins.isAttrs env;
-                  evalChecks.allStrings = isEnv env;
-                  what = "environment variables set";
-                }) output
+                  evalChecks.allStrings = builtins.all (s: builtins.isString s) (builtins.attrValues env);
+                  what = "computed environment variable set";
+                }) envs;
+              }) output
             );
         };
 
