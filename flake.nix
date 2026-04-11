@@ -37,15 +37,15 @@
     {
       formatter = forEachSupportedSystem ({ pkgs, ... }: pkgs.nixfmt);
 
-      lib = import ./nix/lib.nix { inherit lib; };
+      lib = import ./lib;
 
       overlays.default = final: prev: {
         lib =
           prev.lib
-          // (import ./nix/lib.nix {
+          // self.lib {
             inherit (prev) lib;
             pkgs = prev;
-          });
+          };
       };
 
       schemas = {
