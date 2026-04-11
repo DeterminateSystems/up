@@ -20,7 +20,9 @@ The flake schemas are also helpful:
 
 ```text
 {
-  inherit (inputs.up) schemas;
+  schemas = inputs.up.exportedSchemas // {
+    # other schemas
+  };
 }
 ```
 
