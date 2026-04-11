@@ -11,6 +11,7 @@ in
       taskModule
       ;
   };
+
   mkProcessTree = import ./processes.nix {
     inherit
       lib
@@ -18,13 +19,4 @@ in
       taskModule
       ;
   };
-  mkTask =
-    args:
-    (lib.evalModules {
-      modules = [
-        taskModule
-        { config._module.args.name = args.name or "task"; }
-        args
-      ];
-    }).config.drv;
 }
