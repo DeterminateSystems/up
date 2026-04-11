@@ -190,7 +190,32 @@
           schemas
           ;
       }
-      // {
+      // self.exportedSchemas;
+
+      exportedSchemas = {
+        exportedSchemas = {
+          version = 1;
+          doc = ''
+            The `exportedSchemas` flake output is used to define flake schemas that you
+            intend for other flakes to use.
+          '';
+
+          inventory =
+            output:
+            inputs.flake-schemas.lib.mkChildren (
+              builtins.mapAttrs (schemaName: schemaDef: {
+                shortDescription = "A schema checker for the `${schemaName}` flake output";
+                evalChecks.isValidSchema =
+                  schemaDef.version or 0 == 1
+                  && schemaDef ? doc
+                  && builtins.isString (schemaDef.doc)
+                  && schemaDef ? inventory
+                  && builtins.isFunction (schemaDef.inventory);
+                what = "flake schema";
+              }) output
+            );
+        };
+
         taskRunners = {
           version = 1;
           doc = ''
