@@ -18,7 +18,7 @@ This provides the `lib.mkTaskRunner` and `lib.mkProcessTree` functions you'll se
 
 The flake schemas are also helpful:
 
-```text
+```nix
 {
   inherit (inputs.up) schemas;
 }
