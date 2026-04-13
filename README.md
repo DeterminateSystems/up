@@ -57,7 +57,7 @@ The flake schemas are also helpful:
 
 ## Process trees
 
-**Process trees** are process-compose configurations built with Nix.
+**Process trees** are [process-compose] configurations built with Nix.
 Here's an example:
 
 ```nix
@@ -206,11 +206,11 @@ Computed sets are system specific and may be based on things like packages in Ni
 
 ```nix
 computedEnvVars = forEachSupportedSystem (
-  { pkgs, system }:
+  { pkgs, ... }:
   {
-    postgres = {
-      PGSSLCERT = "${pkgs.postgresql}/share/postgresql/root.crt";
-    };
+    postgres.PGSSLCERT = "${pkgs.postgresql}/share/postgresql/root.crt";
   }
 );
 ```
+
+[process-compose]: https://f1bonacc1.github.io/process-compose
