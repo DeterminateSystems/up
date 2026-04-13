@@ -87,27 +87,34 @@ in
     in
     {
       drv =
-        if config.command == null then
-          assert lib.assertMsg (
-            config.packages != [ ]
-          ) "taskModule: '${taskName}' must have either a command or at least one package";
-          builtins.head config.packages
-        else
-          pkgs.writeShellApplication {
-            name = taskName;
-            runtimeInputs = config.packages;
-            runtimeEnv = staticEnv;
-            inherit (config) excludeShellChecks;
-            text = ''
-              ${lib.concatStringsSep "\n" (
-                lib.mapAttrsToList (k: v: ''export ${k}="${escapeForDoubleQuotes v}"'') dynamicEnv
-              )}
-              ${config.command}
-            '';
-            meta = lib.optionalAttrs (config.description != null) {
-              inherit (config) description;
-            };
-          };
+        let
+          baseDrv =
+            if config.command == null then
+              assert lib.assertMsg (
+                config.packages != [ ]
+              ) "taskModule: '${taskName}' must have either a command or at least one package";
+              builtins.head config.packages
+            else
+              pkgs.writeShellApplication {
+                name = taskName;
+                runtimeInputs = config.packages;
+                runtimeEnv = staticEnv;
+                inherit (config) excludeShellChecks;
+                text = ''
+                  ${lib.concatStringsSep "\n" (
+                    lib.mapAttrsToList (k: v: ''export ${k}="${escapeForDoubleQuotes v}"'') dynamicEnv
+                  )}
+                  ${config.command}
+                '';
+                meta = lib.optionalAttrs (config.description != null) {
+                  inherit (config) description;
+                };
+              };
+        in
+        baseDrv
+        // lib.optionalAttrs (config.description != null) {
+          inherit (config) description;
+        };
 
       bin =
         if config.command == null then

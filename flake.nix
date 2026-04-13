@@ -23,7 +23,7 @@
 
       forEachSupportedSystem =
         f:
-        inputs.nixpkgs.lib.genAttrs supportedSystems (
+        lib.genAttrs supportedSystems (
           system:
           f {
             inherit system;
@@ -167,6 +167,21 @@
         }
       );
 
+      tasks = forEachSupportedSystem (
+        { pkgs, ... }:
+        {
+          format-nix = pkgs.lib.mkTask {
+            packages = [ pkgs.nixfmt ];
+            description = "Format Nix files using nixfmt";
+            command = ''
+              echo "Formatting Nix files 🤖"
+              git ls-files -z '*.nix' | xargs -0 nixfmt
+              echo "Successfully formatted Nix files ✅"
+            '';
+          };
+        }
+      );
+
       taskRunners = forEachSupportedSystem (
         { pkgs, system }:
         {
@@ -178,14 +193,7 @@
               sqlfluff
             ];
             tasks = {
-              format-nix = {
-                description = "Format Nix files using nixfmt";
-                command = ''
-                  echo "Formatting Nix files 🤖"
-                  git ls-files -z '*.nix' | xargs -0 nixfmt
-                  echo "Successfully formatted Nix files ✅"
-                '';
-              };
+              inherit (self.tasks.${system}) format-nix;
 
               format-sql = {
                 description = "Format SQL files using sqlfluff";
@@ -241,139 +249,164 @@
       }
       // self.exportedSchemas;
 
-      exportedSchemas = {
-        exportedSchemas = {
-          version = 1;
-          doc = ''
-            The `exportedSchemas` flake output is used to define flake schemas that you
-            intend for other flakes to use.
-          '';
+      exportedSchemas =
+        let
+          mkChildren = children: { inherit children; };
+        in
+        {
+          exportedSchemas = {
+            version = 1;
+            doc = ''
+              The `exportedSchemas` flake output defines flake schemas that you intend for other flakes to use.
+            '';
 
-          inventory =
-            output:
-            inputs.flake-schemas.lib.mkChildren (
-              builtins.mapAttrs (schemaName: schemaDef: {
-                shortDescription = "A schema checker for the `${schemaName}` flake output";
-                evalChecks.isValidSchema =
-                  schemaDef.version or 0 == 1
-                  && schemaDef ? doc
-                  && builtins.isString (schemaDef.doc)
-                  && schemaDef ? inventory
-                  && builtins.isFunction (schemaDef.inventory);
-                what = "flake schema";
-              }) output
-            );
-        };
+            inventory =
+              output:
+              mkChildren (
+                builtins.mapAttrs (schemaName: schemaDef: {
+                  shortDescription = "A schema checker for the `${schemaName}` flake output";
+                  evalChecks.isValidSchema =
+                    schemaDef.version or 0 == 1
+                    && schemaDef ? doc
+                    && builtins.isString (schemaDef.doc)
+                    && schemaDef ? inventory
+                    && builtins.isFunction (schemaDef.inventory);
+                  what = "flake schema";
+                }) output
+              );
+          };
 
-        taskRunners = {
-          version = 1;
-          doc = ''
-            The `taskRunners` output provides a CLI task runner with shell completions.
-          '';
-          appendSystem = true;
-          defaultAttrPath = [ "default" ];
-          inventory =
-            output:
-            inputs.flake-schemas.lib.mkChildren (
-              builtins.mapAttrs (system: runners: {
-                forSystems = [ system ];
-                children = builtins.mapAttrs (_name: runner: {
+          tasks = {
+            version = 1;
+            doc = ''
+              The `tasks` output defines tasks that you can run independently or
+            '';
+            appendSystem = true;
+            roles.nix-run = { };
+            defaultAttrPath = [ "default" ];
+            inventory =
+              output:
+              mkChildren (
+                builtins.mapAttrs (system: tasks: {
                   forSystems = [ system ];
-                  evalChecks.isDerivation = lib.isDerivation runner;
-                  what = runner.description or "task runner";
-                }) runners;
-              }) output
-            );
-        };
+                  children = builtins.mapAttrs (_name: task: {
+                    forSystems = [ system ];
+                    evalChecks.isAttrsOrDerivation = builtins.isAttrs task || lib.isDerivation task;
+                    what = task.description or "runnable task";
+                  }) tasks;
+                }) output
+              );
+          };
 
-        toolchains = {
-          version = 1;
-          doc = ''
-            The `toolchains` output provides language toolchain builder functions.
-            Each toolchain returns `{ packages, env, shellHook }`.
-          '';
-          appendSystem = true;
-          inventory =
-            output:
-            inputs.flake-schemas.lib.mkChildren (
-              builtins.mapAttrs (system: toolchains: {
-                forSystems = [ system ];
-                children = builtins.mapAttrs (_name: toolchain: {
+          taskRunners = {
+            version = 1;
+            doc = ''
+              The `taskRunners` output provides a CLI task runner with shell completions.
+            '';
+            appendSystem = true;
+            defaultAttrPath = [ "default" ];
+            inventory =
+              output:
+              mkChildren (
+                builtins.mapAttrs (system: runners: {
                   forSystems = [ system ];
-                  evalChecks.isFunction = builtins.isFunction toolchain;
-                  what = "language toolchain builder";
-                }) toolchains;
-              }) output
-            );
-        };
+                  children = builtins.mapAttrs (_name: runner: {
+                    forSystems = [ system ];
+                    evalChecks.isDerivation = lib.isDerivation runner;
+                    what = runner.description or "task runner";
+                  }) runners;
+                }) output
+              );
+          };
 
-        staticEnvVars = {
-          version = 1;
-          doc = ''
-            The `staticEnvVars` output provides sets of environment variables
-            that can be sourced into shells or consumed by other tools.
-          '';
-          inventory =
-            output:
-            let
-              isEnv = v: builtins.isAttrs v && builtins.all (s: builtins.isString s) (builtins.attrValues v);
-            in
-            inputs.flake-schemas.lib.mkChildren (
-              builtins.mapAttrs (_name: env: {
-                evalChecks.isAttrs = builtins.isAttrs env;
-                evalChecks.allStrings = isEnv env;
-                what = "environment variables set";
-              }) output
-            );
-        };
-
-        computedEnvVars = {
-          version = 1;
-          doc = ''
-            The `computedEnvVars` output provides sets of environment variables
-            that can be sourced into shells or consumed by other tools. Unlike `staticEnvVars`, these
-            sets are system specific and involve some kind of computation (like using packages from Nixpkgs).
-          '';
-          appendSystem = true;
-          inventory =
-            output:
-            let
-              isEnv = v: builtins.isAttrs v && builtins.all (s: builtins.isString s) (builtins.attrValues v);
-            in
-            inputs.flake-schemas.lib.mkChildren (
-              builtins.mapAttrs (system: envs: {
-                forSystems = [ system ];
-                children = builtins.mapAttrs (_name: env: {
+          toolchains = {
+            version = 1;
+            doc = ''
+              The `toolchains` output provides language toolchain builder functions.
+              Each toolchain returns `{ packages, env, shellHook }`.
+            '';
+            appendSystem = true;
+            inventory =
+              output:
+              mkChildren (
+                builtins.mapAttrs (system: toolchains: {
                   forSystems = [ system ];
+                  children = builtins.mapAttrs (_name: toolchain: {
+                    forSystems = [ system ];
+                    evalChecks.isFunction = builtins.isFunction toolchain;
+                    what = "language toolchain builder";
+                  }) toolchains;
+                }) output
+              );
+          };
+
+          staticEnvVars = {
+            version = 1;
+            doc = ''
+              The `staticEnvVars` output provides sets of environment variables
+              that can be sourced into shells or consumed by other tools.
+            '';
+            inventory =
+              output:
+              let
+                isEnv = v: builtins.isAttrs v && builtins.all (s: builtins.isString s) (builtins.attrValues v);
+              in
+              mkChildren (
+                builtins.mapAttrs (_name: env: {
                   evalChecks.isAttrs = builtins.isAttrs env;
                   evalChecks.allStrings = isEnv env;
-                  what = "computed environment variable set";
-                }) envs;
-              }) output
-            );
-        };
+                  what = "environment variables set";
+                }) output
+              );
+          };
 
-        processTrees = {
-          version = 1;
-          doc = ''
-            The `processTrees` output provides process-compose configurations that you can run using `nix run`.
-          '';
-          roles.nix-run = { };
-          appendSystem = true;
-          defaultAttrPath = [ "default" ];
-          inventory =
-            output:
-            inputs.flake-schemas.lib.mkChildren (
-              builtins.mapAttrs (system: trees: {
-                forSystems = [ system ];
-                children = builtins.mapAttrs (_name: tree: {
+          computedEnvVars = {
+            version = 1;
+            doc = ''
+              The `computedEnvVars` output provides sets of environment variables
+              that can be sourced into shells or consumed by other tools. Unlike `staticEnvVars`, these
+              sets are system specific and involve some kind of computation (like using packages from Nixpkgs).
+            '';
+            appendSystem = true;
+            inventory =
+              output:
+              let
+                isEnv = v: builtins.isAttrs v && builtins.all (s: builtins.isString s) (builtins.attrValues v);
+              in
+              mkChildren (
+                builtins.mapAttrs (system: envs: {
                   forSystems = [ system ];
-                  evalChecks.isDerivation = lib.isDerivation tree;
-                  what = tree.description or "process tree";
-                }) trees;
-              }) output
-            );
+                  children = builtins.mapAttrs (_name: env: {
+                    forSystems = [ system ];
+                    evalChecks.isAttrs = builtins.isAttrs env;
+                    evalChecks.allStrings = isEnv env;
+                    what = "computed environment variable set";
+                  }) envs;
+                }) output
+              );
+          };
+
+          processTrees = {
+            version = 1;
+            doc = ''
+              The `processTrees` output provides process-compose configurations that you can run using `nix run`.
+            '';
+            roles.nix-run = { };
+            appendSystem = true;
+            defaultAttrPath = [ "default" ];
+            inventory =
+              output:
+              mkChildren (
+                builtins.mapAttrs (system: trees: {
+                  forSystems = [ system ];
+                  children = builtins.mapAttrs (_name: tree: {
+                    forSystems = [ system ];
+                    evalChecks.isDerivation = lib.isDerivation tree;
+                    what = tree.description or "process tree";
+                  }) trees;
+                }) output
+              );
+          };
         };
-      };
     };
 }
