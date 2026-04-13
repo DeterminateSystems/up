@@ -68,12 +68,17 @@
               packages = with pkgs; [
                 self.formatter.${system}
 
+                # Task runners
                 self.taskRunners.${system}.fmt
 
+                # Language toolchains
                 phpToolchain.packages
                 pythonToolchain.packages
                 rustToolchain.packages
                 terraformToolchain.packages
+
+                # Process trees
+                self.processTrees.${system}.postgres
               ];
 
               shellHook = ''
@@ -93,12 +98,11 @@
         { pkgs, system }:
         {
           postgres = pkgs.lib.mkProcessTree {
-            name = "postgres-process-tree";
+            name = "run-pg";
             description = "Run Postgres locally";
 
             packages = with pkgs; [
               (postgresql_18.withPackages (p: with p; [ pg_uuidv7 ]))
-              redis
             ];
 
             environment = self.envVars.postgres;
@@ -130,8 +134,6 @@
                 '';
                 depends_on.postgres.condition = "process_healthy";
               };
-
-              inherit (self.tasks.${system}) redis;
             };
           };
         }
@@ -144,40 +146,40 @@
             name = "fmt";
             description = "Run formatters";
             packages = with pkgs; [
-              git
               nixfmt
+              sqlfluff
+              rustfmt
             ];
             tasks = {
               format-nix = {
-                description = "Format Nix files";
-                command = "git ls-files -z '*.nix' | xargs -0 nixfmt";
+                description = "Format Nix files using nixfmg";
+                command = ''
+                  echo "Formatting Nix files 🤖"
+                  git ls-files -z '*.nix' | xargs -0 nixfmt
+                  echo "Successfully formatted Nix files ✅"
+                '';
+              };
+
+              format-sql = {
+                description = "Format SQL files using sqlfluff";
+                command = ''
+                  echo "Formatting SQL files 🤖"
+                  sqlfluff format
+                  echo "Successfully formatted SQL files ✅"
+                '';
+              };
+
+              format-rust = {
+                description = "Format Rust files using cargo fmt";
+                command = ''
+                  echo "Formatting Rust files 🤖"
+
+                  rustfmt
+
+                  echo "Successfully formatted SQL files ✅"
+                '';
               };
             };
-          };
-        }
-      );
-
-      tasks = forEachSupportedSystem (
-        { pkgs, ... }:
-        {
-          redis = {
-            description = "Run the Redis server";
-            packages = [ pkgs.redis ];
-            command = "redis-server";
-          };
-
-          format-sql = {
-            description = "Format SQL files";
-            packages = [ pkgs.sqlfluff ];
-            command = ''
-              git ls-files -z '*.sql' | xargs sqlfluff format
-            '';
-          };
-
-          format-nix = {
-            description = "Format all Nix files in the sourcetree";
-            command = "git ls-files -z '*.nix' | xargs -0 nixfmt";
-            packages = [ pkgs.nixfmt ];
           };
         }
       );
@@ -300,30 +302,6 @@
                   evalChecks.allStrings = isEnv env;
                   what = "environment variables set";
                 }) output
-            );
-        };
-
-        tasks = {
-          version = 1;
-          doc = ''
-            The `tasks` output provides one-shot runnable commands such as database migrations, seed scripts, and build steps.
-          '';
-          roles.nix-run = { };
-          appendSystem = true;
-          inventory =
-            output:
-            inputs.flake-schemas.lib.mkChildren (
-              builtins.mapAttrs (system: tasks: {
-                forSystems = [ system ];
-                children = builtins.mapAttrs (taskName: task: {
-                  forSystems = [ system ];
-                  evalChecks = {
-                    hasCommand = task ? command || task ? packages;
-                    isAttrs = builtins.isAttrs task;
-                  };
-                  what = task.description or "task";
-                }) tasks;
-              }) output
             );
         };
 
