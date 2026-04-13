@@ -66,16 +66,17 @@
             in
             pkgs.mkShellNoCC {
               packages = with pkgs; [
-                self.taskRunners.${system}.default
                 self.formatter.${system}
+
+                self.taskRunners.${system}.fmt
 
                 phpToolchain.packages
                 pythonToolchain.packages
                 rustToolchain.packages
                 terraformToolchain.packages
               ];
+
               shellHook = ''
-                ${self.taskRunners.${system}.default.shellHook}
                 ${pythonToolchain.shellHook}
                 ${phpToolchain.shellHook}
               '';
@@ -139,20 +140,14 @@
       taskRunners = forEachSupportedSystem (
         { pkgs, system }:
         {
-          default = pkgs.lib.mkTaskRunner {
-            name = "work";
-            description = "Run linters and formatters";
+          fmt = pkgs.lib.mkTaskRunner {
+            name = "fmt";
+            description = "Run formatters";
             packages = with pkgs; [
-              editorconfig-checker
               git
               nixfmt
             ];
             tasks = {
-              check-nix-formatting = {
-                description = "Check Nix formatting";
-                command = "git ls-files -z '*.nix' | xargs -0 nixfmt check";
-              };
-
               format-nix = {
                 description = "Format Nix files";
                 command = "git ls-files -z '*.nix' | xargs -0 nixfmt";
@@ -190,163 +185,22 @@
       toolchains = forEachSupportedSystem (
         { pkgs, system }:
         {
-          go =
-            {
-              version ? null,
-            }:
-            {
-              packages =
-                if version == null then
-                  pkgs.go
-                else
-                  pkgs.${"go_1_${builtins.replaceStrings [ "." ] [ "_" ] (toString version)}"};
-            };
+          go = import ./toolchains/go { inherit pkgs; };
 
-          terraform =
-            {
-              plugins ? [ ],
-            }:
-            let
-              tfPkg = pkgs.terraform;
-            in
-            {
-              packages = if plugins == [ ] then tfPkg else tfPkg.withPlugins (p: map (name: p.${name}) plugins);
-              shellHook = "";
-              env = {
-                TF_CLI_ARGS = "-no-color";
-              };
-            };
+          terraform = import ./toolchains/terraform { inherit pkgs; };
 
-          js =
-            {
-              nodejs ? false,
-              bun ? false,
-              npm ? false,
-              pnpm ? false,
-            }:
-            {
-              packages = pkgs.symlinkJoin {
-                name = "js-env";
-                paths =
-                  lib.optional nodejs pkgs.nodejs
-                  ++ lib.optional bun pkgs.bun
-                  ++ lib.optional npm pkgs.npm
-                  ++ lib.optional pnpm pkgs.pnpm;
-              };
-            };
+          js = import ./toolchains/js { inherit lib pkgs; };
 
-          php =
-            {
-              version ? "8.3",
-              ini ? "",
-              fpm ? {
-                pools = { };
-              },
-            }:
-            let
-              phpPkg =
-                pkgs.${"php${builtins.replaceStrings [ "." ] [ "" ] version}"}
-                  or (throw "unknown php version: ${version}");
+          php = import ./toolchains/php { inherit lib pkgs; };
 
-              fpmConf = pkgs.writeText "php-fpm.conf" (
-                lib.concatStrings (
-                  lib.mapAttrsToList (
-                    poolName: pool:
-                    ''
-                      [${poolName}]
-                    ''
-                    + lib.concatStrings (lib.mapAttrsToList (k: v: "${k} = ${v}\n") (pool.settings or { }))
-                  ) (fpm.pools or { })
-                )
-              );
+          python = import ./toolchains/python {
+            inherit lib pkgs;
+          };
 
-              shellHook = lib.optionalString (fpm.pools != { }) ''
-                php-fpm -y ${fpmConf} -D
-                trap "php-fpm -y ${fpmConf} -F -R 2>/dev/null" EXIT
-              '';
-            in
-            {
-              packages =
-                if ini == "" then
-                  phpPkg
-                else
-                  phpPkg.buildEnv {
-                    extraConfig = ini;
-                  };
-              shellHook = lib.optionalString (fpm.pools != { }) ''
-                php-fpm -y ${fpmConf} -D
-                trap "php-fpm -y ${fpmConf} -F -R 2>/dev/null" EXIT
-              '';
-              env = { };
-            };
-
-          python =
-            {
-              version ? null,
-              uv ? false,
-              venv ? {
-                enable = false;
-                requirements = "";
-              },
-            }:
-            let
-              pythonPkg =
-                if version == null then
-                  pkgs.python3
-                else
-                  pkgs.${"python${builtins.replaceStrings [ "." ] [ "" ] version}"}
-                    or (throw "unknown python version: ${version}");
-            in
-            {
-              packages = pkgs.symlinkJoin {
-                name = "python-env";
-                paths = [ pythonPkg ] ++ lib.optional uv pkgs.uv;
-              };
-
-              shellHook = lib.optionalString (venv.enable or false) ''
-                uv venv .venv
-                ${lib.optionalString (venv.requirements or "" != "") ''
-                  uv pip install ${venv.requirements}
-                ''}
-              '';
-            };
-
-          rust =
-            {
-              stable ? true,
-              channel ? null,
-              targets ? [ ],
-              envSrcPath ? false,
-            }:
-            let
-              fenixPkgs = inputs.fenix.packages.${system};
-
-              rustToolchain =
-                (
-                  if channel != null then
-                    {
-                      "stable" = fenixPkgs.stable;
-                      "nightly" = fenixPkgs.latest;
-                      "beta" = fenixPkgs.beta;
-                    }
-                    .${channel} or (throw "unknown rust channel: ${channel}")
-                  else if stable then
-                    fenixPkgs.stable
-                  else
-                    fenixPkgs.latest
-                ).toolchain;
-
-              targetStdlibs = map (target: fenixPkgs.targets.${target}.stable.rust-std) targets;
-
-              packages = fenixPkgs.combine ([ rustToolchain ] ++ targetStdlibs);
-            in
-            {
-              env = lib.optionalAttrs envSrcPath {
-                RUST_SRC_PATH = "${rustToolchain}/lib/rustlib/src/rust/library";
-              };
-
-              inherit packages;
-            };
+          rust = import ./toolchains/rust {
+            inherit (inputs) fenix;
+            inherit lib system;
+          };
         }
       );
 
@@ -400,7 +254,7 @@
           version = 1;
           doc = ''
             The `toolchains` output provides language toolchain builder functions.
-            Each toolchain returns `{ packages, shellHook }`.
+            Each toolchain returns `{ packages, env, shellHook }`.
           '';
           appendSystem = true;
           inventory =
