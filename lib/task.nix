@@ -35,6 +35,21 @@ in
       type = types.either (types.attrsOf types.str) (types.listOf types.str);
       default = { };
     };
+    before = mkOption {
+      type = types.listOf types.str;
+      default = [ ];
+      description = "Tasks that this task must run before.";
+    };
+    after = mkOption {
+      type = types.listOf types.str;
+      default = [ ];
+      description = "Tasks that must complete before this task runs.";
+    };
+    status = mkOption {
+      type = types.nullOr types.str;
+      default = null;
+      description = "Command to check if the task needs to run. Exit 0 means skip.";
+    };
     # generated
     bin = mkOption {
       type = types.str;

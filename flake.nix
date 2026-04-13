@@ -172,15 +172,14 @@
         {
           fmt = pkgs.lib.mkTaskRunner {
             name = "fmt";
-            description = "Run formatters";
+            description = "Run various formatters";
             packages = with pkgs; [
               nixfmt
               sqlfluff
-              rustfmt
             ];
             tasks = {
               format-nix = {
-                description = "Format Nix files using nixfmg";
+                description = "Format Nix files using nixfmt";
                 command = ''
                   echo "Formatting Nix files 🤖"
                   git ls-files -z '*.nix' | xargs -0 nixfmt
@@ -193,17 +192,6 @@
                 command = ''
                   echo "Formatting SQL files 🤖"
                   sqlfluff format
-                  echo "Successfully formatted SQL files ✅"
-                '';
-              };
-
-              format-rust = {
-                description = "Format Rust files using cargo fmt";
-                command = ''
-                  echo "Formatting Rust files 🤖"
-
-                  rustfmt
-
                   echo "Successfully formatted SQL files ✅"
                 '';
               };
