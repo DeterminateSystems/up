@@ -11,7 +11,22 @@ let
 
   escapeSingleQuote = s: lib.replaceStrings [ "'" ] [ "'\"'\"'" ] s;
 
-  # Topological sort - returns ordered list of task names
+  isTask = v: builtins.isAttrs v && v ? __isTask && v.__isTask;
+
+  resolveTask =
+    name: v:
+    if isTask v then
+      v
+    else
+      (lib.evalModules {
+        modules = [
+          taskModule
+          { config._module.args.name = name; }
+          v
+        ];
+      }).config;
+
+  # Topological sort to return an ordered list of task names
   topoSort =
     tasks:
     let
@@ -57,7 +72,7 @@ let
       options = {
         name = mkOption {
           type = types.str;
-          default = "act";
+          default = "tasks";
         };
         description = mkOption {
           type = types.nullOr types.str;
@@ -68,7 +83,7 @@ let
           default = [ ];
         };
         tasks = mkOption {
-          type = types.attrsOf (types.submodule taskModule);
+          type = types.attrsOf types.anything;
           default = { };
         };
         drv = mkOption {
@@ -79,12 +94,18 @@ let
 
       config.drv =
         let
-          topo = topoSort config.tasks;
+          resolvedTasks =
+            assert lib.assertMsg (
+              !builtins.hasAttr "all" config.tasks
+            ) "mkTaskRunner: '${config.name}' has a task named 'all', which is reserved";
+            lib.mapAttrs resolveTask config.tasks;
+
+          topo = topoSort resolvedTasks;
           orderedNames = topo.ordered;
           edges = topo.edges;
           orderedTasks = map (n: {
             name = n;
-            task = config.tasks.${n};
+            task = resolvedTasks.${n};
           }) orderedNames;
 
           listLines = lib.concatStringsSep "\n" (
@@ -108,7 +129,7 @@ let
                 depSteps = lib.concatStringsSep "\n" (
                   map (depName: ''
                     echo "[${depName}] running..."
-                    ${config.tasks.${depName}.bin}
+                    ${resolvedTasks.${depName}.bin}
                   '') deps
                 );
               in
@@ -142,7 +163,7 @@ let
         in
         pkgs.writeShellApplication {
           inherit (config) name;
-          runtimeInputs = config.packages;
+          runtimeInputs = lib.unique config.packages;
           text = ''
             if [[ $# -eq 0 || "$1" == "--list" || "$1" == "-l" ]]; then
               printf '%s - %s\n\n' '${config.name}' '${
