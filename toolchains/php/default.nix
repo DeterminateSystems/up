@@ -24,11 +24,6 @@ let
       ) (fpm.pools or { })
     )
   );
-
-  shellHook = lib.optionalString (fpm.pools != { }) ''
-    php-fpm -y ${fpmConf} -D
-    trap "php-fpm -y ${fpmConf} -F -R 2>/dev/null" EXIT
-  '';
 in
 {
   packages =

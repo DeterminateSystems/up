@@ -45,16 +45,25 @@
             let
               toolchains = self.toolchains.${system};
 
+              goToolchain = toolchains.go {
+                version = "1.26";
+                gofmt = true;
+                gotools = true;
+              };
+
               pythonToolchain = toolchains.python {
                 uv = true;
               };
 
               rustToolchain = toolchains.rust {
                 channel = "stable";
+                targets = [ ];
                 envSrcPath = true;
               };
 
-              phpToolchain = toolchains.php { };
+              phpToolchain = toolchains.php {
+                version = "8.4";
+              };
 
               terraformToolchain = toolchains.terraform {
                 plugins = [
@@ -72,6 +81,7 @@
                 self.taskRunners.${system}.fmt
 
                 # Language toolchains
+                goToolchain.packages
                 phpToolchain.packages
                 pythonToolchain.packages
                 rustToolchain.packages
@@ -85,7 +95,7 @@
                 ${pythonToolchain.shellHook}
                 ${phpToolchain.shellHook}
               '';
-              env = rustToolchain.env // self.computedEnvVars.${system}.openssl;
+              env = rustToolchain.env // self.computedEnvVars.${system}.openssl // terraformToolchain.env;
             };
         }
       );
@@ -205,7 +215,7 @@
       toolchains = forEachSupportedSystem (
         { pkgs, system }:
         {
-          go = import ./toolchains/go { inherit pkgs; };
+          go = import ./toolchains/go { inherit lib pkgs; };
 
           terraform = import ./toolchains/terraform { inherit pkgs; };
 
