@@ -41,194 +41,17 @@
       devShells = forEachSupportedSystem (
         { pkgs, system }:
         {
-          default =
-            let
-              toolchains = self.toolchains.${system};
-
-              goToolchain = toolchains.go {
-                version = "1.26";
-                gofmt = true;
-                gotools = true;
-              };
-
-              pythonToolchain = toolchains.python {
-                uv = true;
-              };
-
-              rustToolchain = toolchains.rust {
-                channel = "stable";
-                targets = [ ];
-                envSrcPath = true;
-              };
-
-              phpToolchain = toolchains.php {
-                version = "8.4";
-              };
-
-              terraformToolchain = toolchains.terraform {
-                plugins = [
-                  "hashicorp_aws"
-                  "hashicorp_google"
-                  "hashicorp_kubernetes"
-                ];
-              };
-            in
-            pkgs.mkShellNoCC {
-              packages = with pkgs; [
-                self.formatter.${system}
-
-                # Task runners
-                self.taskRunners.${system}.fmt
-
-                # Language toolchains
-                goToolchain.packages
-                phpToolchain.packages
-                pythonToolchain.packages
-                rustToolchain.packages
-                terraformToolchain.packages
-
-                # Process trees
-                self.processTrees.${system}.postgres
-              ];
-
-              shellHook = ''
-                ${pythonToolchain.shellHook}
-                ${phpToolchain.shellHook}
-              '';
-              env = rustToolchain.env // self.computedEnvVars.${system}.openssl // terraformToolchain.env;
-            };
+          default = pkgs.mkShellNoCC {
+            packages = with pkgs; [
+              self.formatter.${system}
+            ];
+          };
         }
       );
 
       formatter = forEachSupportedSystem ({ pkgs, ... }: pkgs.nixfmt);
 
       lib = import ./lib { inherit lib; };
-
-      staticEnvVars.postgres = {
-        PGDATA = ".state/postgres";
-        PGDATABASE = "testing";
-        PGHOST = "127.0.0.1";
-        PGPORT = "5432";
-      };
-
-      computedEnvVars = forEachSupportedSystem (
-        { pkgs, system }:
-        {
-          openssl = {
-            OPENSSL_DIR = "${pkgs.openssl.dev}";
-            OPENSSL_LIB_DIR = "${pkgs.openssl.out}/lib";
-            OPENSSL_INCLUDE_DIR = "${pkgs.openssl.dev}/include";
-          };
-        }
-      );
-
-      processTrees = forEachSupportedSystem (
-        { pkgs, system }:
-        {
-          postgres = pkgs.lib.mkProcessTree {
-            name = "run-pg";
-            description = "Run Postgres locally";
-
-            packages = with pkgs; [
-              (postgresql_18.withPackages (p: with p; [ pg_uuidv7 ]))
-            ];
-
-            environment = self.staticEnvVars.postgres // self.computedEnvVars.${system}.openssl;
-
-            processes = {
-              postgres-setup = {
-                command = ''
-                  mkdir -p $PGDATA
-                  [[ -e "$PGDATA/PG_VERSION" ]] || initdb --no-locale --encoding=UTF8
-                '';
-              };
-
-              postgres = {
-                command = "postgres";
-                depends_on.postgres-setup.condition = "process_completed_successfully";
-                readiness_probe = {
-                  exec.command = "pg_isready";
-                  initial_delay_seconds = 1;
-                  period_seconds = 2;
-                  failure_threshold = 100;
-                };
-              };
-
-              postgres-post-startup = {
-                command = ''
-                  createdb $PGDATABASE || true
-
-                  psql -c "CREATE EXTENSION IF NOT EXISTS pg_uuidv7;"
-                '';
-                depends_on.postgres.condition = "process_healthy";
-              };
-            };
-          };
-        }
-      );
-
-      tasks = forEachSupportedSystem (
-        { pkgs, ... }:
-        {
-          format-nix = pkgs.lib.mkTask {
-            packages = [ pkgs.nixfmt ];
-            description = "Format Nix files using nixfmt";
-            command = ''
-              echo "Formatting Nix files 🤖"
-              git ls-files -z '*.nix' | xargs -0 nixfmt
-              echo "Successfully formatted Nix files ✅"
-            '';
-          };
-        }
-      );
-
-      taskRunners = forEachSupportedSystem (
-        { pkgs, system }:
-        {
-          fmt = pkgs.lib.mkTaskRunner {
-            name = "fmt";
-            description = "Run various formatters";
-            packages = with pkgs; [
-              nixfmt
-              sqlfluff
-            ];
-            tasks = {
-              inherit (self.tasks.${system}) format-nix;
-
-              format-sql = {
-                description = "Format SQL files using sqlfluff";
-                command = ''
-                  echo "Formatting SQL files 🤖"
-                  sqlfluff format
-                  echo "Successfully formatted SQL files ✅"
-                '';
-              };
-            };
-          };
-        }
-      );
-
-      toolchains = forEachSupportedSystem (
-        { pkgs, system }:
-        {
-          go = import ./toolchains/go { inherit lib pkgs; };
-
-          terraform = import ./toolchains/terraform { inherit pkgs; };
-
-          js = import ./toolchains/js { inherit lib pkgs; };
-
-          php = import ./toolchains/php { inherit lib pkgs; };
-
-          python = import ./toolchains/python {
-            inherit lib pkgs;
-          };
-
-          rust = import ./toolchains/rust {
-            inherit (inputs) fenix;
-            inherit lib system;
-          };
-        }
-      );
 
       overlays.default = final: prev: {
         lib =
@@ -247,7 +70,9 @@
           schemas
           ;
       }
-      // self.exportedSchemas;
+      // {
+        inherit (self.exportedSchemas) exportedSchemas;
+      };
 
       exportedSchemas =
         let
