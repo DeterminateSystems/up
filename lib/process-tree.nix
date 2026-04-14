@@ -28,7 +28,7 @@ let
         type = types.str;
       };
       working_dir = mkOption {
-        type = types.str;
+        type = types.nullOr types.str;
         default = null;
       };
     };
@@ -85,6 +85,10 @@ let
     {
       options = {
         command = mkOption {
+          type = types.nullOr types.str;
+          default = null;
+        };
+        working_dir = mkOption {
           type = types.nullOr types.str;
           default = null;
         };
@@ -177,11 +181,10 @@ let
             proc:
             let
               allPackages = lib.unique (config.packages ++ proc.packages);
-              binPaths = map (p: "${p}/bin") allPackages;
               environment = toEnvList proc.environment;
             in
             stripNulls {
-              inherit (proc) command;
+              inherit (proc) command working_dir;
               depends_on = if proc.depends_on == { } then null else proc.depends_on;
               environment = if environment == [ ] then null else environment;
               liveness_probe =
