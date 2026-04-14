@@ -51,12 +51,12 @@
 
       formatter = forEachSupportedSystem ({ pkgs, ... }: pkgs.nixfmt);
 
-      lib = import ./lib { inherit lib; };
+      lib = import ./lib;
 
       overlays.default = final: prev: {
         lib =
           prev.lib
-          // (import ./lib {
+          // (self.lib {
             inherit (prev) lib;
             pkgs = prev;
           });
