@@ -59,6 +59,27 @@ let
     };
   };
 
+  shutdownModule = {
+    options = {
+      command = mkOption {
+        type = types.nullOr types.str;
+        default = null;
+      };
+      signal = mkOption {
+        type = types.int;
+        default = 15; # SIGTERM
+      };
+      timeout_seconds = mkOption {
+        type = types.ints.positive;
+        default = 10;
+      };
+      parent_only = mkOption {
+        type = types.bool;
+        default = false;
+      };
+    };
+  };
+
   processModule =
     { name, ... }:
     {
@@ -89,6 +110,10 @@ let
         };
         liveness_probe = mkOption {
           type = types.nullOr (types.submodule probeModule);
+          default = null;
+        };
+        shutdown = mkOption {
+          type = types.nullOr (types.submodule shutdownModule);
           default = null;
         };
       };
@@ -173,6 +198,7 @@ let
                       failure_threshold
                       ;
                   };
+
               readiness_probe =
                 if proc.readiness_probe == null then
                   null
@@ -189,6 +215,19 @@ let
                       timeout_seconds
                       failure_threshold
                       ;
+                  };
+
+              shutdown =
+                if proc.shutdown == null then
+                  null
+                else
+                  stripNulls {
+                    inherit (proc.shutdown)
+                      signal
+                      timeout_seconds
+                      parent_only
+                      ;
+                    command = proc.shutdown.command;
                   };
             };
 
