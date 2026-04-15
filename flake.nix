@@ -134,7 +134,7 @@
                   children = builtins.mapAttrs (_name: runner: {
                     forSystems = [ system ];
                     evalChecks.isDerivation = lib.isDerivation runner;
-                    what = runner.description or "task runner";
+                    what = "${runner.name}: ${runner.description or "task runner"}";
                   }) runners;
                 }) output
               );

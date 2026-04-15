@@ -217,10 +217,6 @@ let
               echo ""
               ${listLines}
               echo ""
-              printf '  %s  %s\n' \
-                "$(gum style --foreground 212 'all')" \
-                "$(gum style --foreground 240 'Run all tasks in dependency order')"
-              echo ""
               exit 0
             fi
 
