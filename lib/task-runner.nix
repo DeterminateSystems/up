@@ -287,6 +287,11 @@ let
         }
         // {
           command = commandText;
+          tasks = lib.mapAttrs (_: task: {
+            inherit (task) description bin;
+            before = task.before or [ ];
+            after = task.after or [ ];
+          }) resolvedTasks;
         }
         // lib.optionalAttrs (config.description != null) {
           inherit (config) description;

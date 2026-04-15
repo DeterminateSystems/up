@@ -122,8 +122,9 @@
           taskRunners = {
             version = 1;
             doc = ''
-              The `taskRunners` output provides a CLI task runner with shell completions.
+              The `taskRunners` output provides task runner scripts that you can run using `nix run`.
             '';
+            roles.nix-run = { };
             appendSystem = true;
             defaultAttrPath = [ "default" ];
             inventory =
@@ -134,7 +135,10 @@
                   children = builtins.mapAttrs (_name: runner: {
                     forSystems = [ system ];
                     evalChecks.isDerivation = lib.isDerivation runner;
-                    what = "${runner.name}: ${runner.description or "task runner"}";
+                    children = builtins.mapAttrs (taskName: task: {
+                      forSystems = [ system ];
+                      what = task.description or "task";
+                    }) (runner.tasks or { });
                   }) runners;
                 }) output
               );
