@@ -337,6 +337,19 @@ let
         // {
           script = builtins.readFile "${drv}/bin/${config.name}";
           config = builtins.readFile configFile;
+          processes = lib.mapAttrs (name: proc: {
+            inherit name;
+            command = proc.command;
+            resolvedCommand =
+              let
+                val = serializeProcess name proc;
+              in
+              {
+                inherit (val) environment;
+                script = builtins.readFile val.command;
+              };
+            inherit (proc) staticEnvVars runtimeEnvVars depends_on;
+          }) config.processes;
         };
     };
 in
