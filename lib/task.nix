@@ -109,7 +109,8 @@ in
         let
           baseDrv = pkgs.writeShellApplication {
             name = taskName;
-            runtimeInputs = lib.unique (config.packages ++ [ pkgs.gum ]);
+            runtimeInputs =
+              config.packages ++ lib.optional (config.confirm != false || config.requireArgs) pkgs.gum;
             runtimeEnv = staticEnv;
             inherit (config) excludeShellChecks;
             text = lib.concatStringsSep "\n" (
