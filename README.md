@@ -73,14 +73,14 @@ Here's an example:
           redis
         ];
 
-        # static environment variables
-        environment = {
+        # environment variables that are simple strings passed to process-compose
+        staticEnvVars = {
           PGDATABASE = "testing";
           PGPORT = toString 5432;
         };
 
-        # calculated at runtime
-        shellEnvironment = rec {
+        # environment variables that become exports in the command script
+        runtimeEnvVars = rec {
           PGDATA = "$PWD/.state/postgres";
           PGHOST = PGDATA;
         };

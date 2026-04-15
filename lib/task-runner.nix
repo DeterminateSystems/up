@@ -52,7 +52,7 @@ let
           hasUnresolvedDep =
             name: builtins.any (e: e.to == name && builtins.elem e.from remaining) resolvedEdges;
           ready = builtins.filter (n: !hasUnresolvedDep n) remaining;
-          rest = builtins.filter (n: hasUnresolvedDep n) remaining;
+          rest = builtins.filter hasUnresolvedDep;
         in
         if remaining == [ ] then
           [ ]
@@ -100,9 +100,9 @@ let
             ) "mkTaskRunner: '${config.name}' has a task named 'all', which is reserved";
             lib.mapAttrs resolveTask config.tasks;
 
+          inherit (topo) edges;
           topo = topoSort resolvedTasks;
           orderedNames = topo.ordered;
-          edges = topo.edges;
           orderedTasks = map (n: {
             name = n;
             task = resolvedTasks.${n};

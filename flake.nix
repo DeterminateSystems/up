@@ -89,9 +89,9 @@
                   evalChecks.isValidSchema =
                     schemaDef.version or 0 == 1
                     && schemaDef ? doc
-                    && builtins.isString (schemaDef.doc)
+                    && builtins.isString schemaDef.doc
                     && schemaDef ? inventory
-                    && builtins.isFunction (schemaDef.inventory);
+                    && builtins.isFunction schemaDef.inventory;
                   what = "flake schema";
                 }) output
               );

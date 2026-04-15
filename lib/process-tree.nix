@@ -9,6 +9,18 @@ module:
 let
   inherit (lib) mkOption types;
 
+  toEnvList = env: if builtins.isList env then env else lib.mapAttrsToList (k: v: "${k}=${v}") env;
+  toExport =
+    e:
+    let
+      key = builtins.head (builtins.split "=" e);
+      val = lib.removePrefix "${key}=" e;
+    in
+    if lib.hasInfix "$(" val then
+      ''${key}="${val}"'' + "\n" + "export ${key}"
+    else
+      ''export ${key}="${val}"'';
+
   dependencyModule = {
     options.condition = mkOption {
       type = types.enum [
@@ -186,7 +198,7 @@ let
           stripNulls = lib.filterAttrs (_: v: v != null);
           toEnvList = env: if builtins.isList env then env else lib.mapAttrsToList (k: v: "${k}=${v}") env;
           serializeProcess =
-            proc:
+            name: proc:
             let
               allPackages = lib.unique (config.packages ++ proc.packages);
               environment = toEnvList proc.staticEnvVars;
@@ -202,22 +214,17 @@ let
                   proc.command
                 else
                   let
-                    exports = lib.concatStringsSep "\n" (
-                      map (
-                        e:
-                        let
-                          key = builtins.head (builtins.split "=" e);
-                          val = lib.removePrefix "${key}=" e;
-                        in
-                        ''export ${key}="${val}"''
-                      ) envList
-                    );
-                  in
-                  ''
-                    ${exports}
+                    exports = lib.concatStringsSep "\n" (map toExport envList);
+                    script = pkgs.writeShellApplication {
+                      name = "run-${name}";
+                      text = ''
+                        ${exports}
 
-                    ${proc.command}
-                  '';
+                        ${proc.command}
+                      '';
+                    };
+                  in
+                  "${script}/bin/run-${name}";
 
               depends_on = if proc.depends_on == { } then null else proc.depends_on;
               environment = if environment == [ ] then null else environment;
@@ -260,50 +267,63 @@ let
                 else
                   stripNulls {
                     inherit (proc.shutdown)
+                      command
+                      parent_only
                       signal
                       timeout_seconds
-                      parent_only
                       ;
-                    command = proc.shutdown.command;
                   };
             };
 
-          runtimeExports = lib.concatStringsSep "\n" (
-            lib.mapAttrsToList (k: v: ''export ${k}="${v}"'') config.runtimeEnvVars
-          );
+          runtimeExports = lib.concatStringsSep "\n" (map toExport (toEnvList config.runtimeEnvVars));
 
           configFile =
             pkgs.runCommand config.configFileName
               {
-                json = builtins.toJSON {
+                json = builtins.toJSON (stripNulls {
                   inherit (config) log_level;
                   log_location = "/tmp/pc-debug.log";
-                  environment = toEnvList config.staticEnvVars;
-                  processes = lib.mapAttrs (_: serializeProcess) config.processes;
-                };
+                  environment =
+                    let
+                      envList = toEnvList config.staticEnvVars;
+                    in
+                    if envList == [ ] then null else envList;
+                  processes = lib.mapAttrs serializeProcess config.processes;
+                });
                 passAsFile = [ "json" ];
                 nativeBuildInputs = [ pkgs.yq-go ];
               }
               ''
                 yq -P '.' "$jsonPath" > $out
               '';
+
+          commandText =
+            let
+              processComposeCommand = lib.concatStringsSep " " [
+                "process-compose"
+                "up"
+              ];
+
+              parts = lib.filter (s: s != "") [
+                (lib.optionalString (toEnvList config.runtimeEnvVars != [ ]) (lib.removeSuffix "\n" runtimeExports))
+                (lib.optionalString (config.packages != [ ])
+                  ''export PATH="${lib.concatStringsSep ":" (map (p: "${p}/bin") config.packages)}:$PATH"''
+                )
+                processComposeCommand
+              ];
+            in
+            (lib.concatStringsSep "\n\n" parts) + "\n";
         in
         pkgs.writeShellApplication {
           inherit (config) name;
           runtimeInputs = [ config.package ];
-          text = ''
-            ${runtimeExports}
-
-            export PATH="${lib.concatStringsSep ":" (map (p: "${p}/bin") config.packages)}:$PATH"
-
-            process-compose up \
-              --config ${configFile}
-          '';
+          text = commandText;
         }
         // lib.optionalAttrs (config.description != null) {
           inherit (config) description;
         }
         // {
+          command = commandText;
           config = configFile;
         };
     };
