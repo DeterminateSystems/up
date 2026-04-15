@@ -125,21 +125,23 @@ let
               maxLen = lib.foldl (
                 acc: n: if lib.stringLength n > acc then lib.stringLength n else acc
               ) 0 allNames;
-              colWidth = toString (maxLen + 2);
+              accent = "\\e[38;5;212m";
+              muted = "\\e[38;5;240m";
+              reset = "\\e[0m";
               mkRow =
                 name: desc:
                 let
                   spaces = lib.concatStringsSep "" (lib.genList (_: " ") (maxLen - lib.stringLength name + 2));
                 in
-                ''echo "  $(gum style --foreground 212 '${name}')${spaces}  $(gum style --foreground 240 '${desc}')"'';
+                "  ${accent}${name}${reset}${spaces}  ${muted}${escapeSingleQuote desc}${reset}";
+              rows =
+                map (
+                  { name, task }:
+                  mkRow name (if task.description != null then escapeSingleQuote task.description else "")
+                ) orderedTasks
+                ++ [ (mkRow "all" "Run all tasks in dependency order") ];
             in
-            lib.concatStringsSep "\n" (
-              map (
-                { name, task }:
-                mkRow name (if task.description != null then escapeSingleQuote task.description else "")
-              ) orderedTasks
-              ++ [ (mkRow "all" "Run all tasks in dependency order") ]
-            );
+            ''echo -e "${lib.concatStringsSep "\\n" rows}"'';
 
           runStep = name: bin: args: ''
             gum style --foreground 212 '▶ ${name}'
