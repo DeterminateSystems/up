@@ -195,13 +195,15 @@ let
           type = types.attrsOf (types.submodule processModule);
           default = { };
         };
-        drv = mkOption {
+
+        # generated
+        script = mkOption {
           type = types.package;
           readOnly = true;
         };
       };
 
-      config.drv =
+      config.script =
         let
           stripNulls = lib.filterAttrs (_: v: v != null);
           toEnvList = env: if builtins.isList env then env else lib.mapAttrsToList (k: v: "${k}=${v}") env;
@@ -323,18 +325,18 @@ let
             in
             lib.concatStringsSep "\n\n" parts;
 
-          drv = pkgs.writeShellApplication {
+          script = pkgs.writeShellApplication {
             inherit (config) name excludeShellChecks;
             runtimeInputs = allPackages;
             text = commandText;
           };
         in
-        drv
+        script
         // lib.optionalAttrs (config.description != null) {
           inherit (config) description;
         }
         // {
-          script = builtins.readFile "${drv}/bin/${config.name}";
+          script = builtins.readFile "${script}/bin/${config.name}";
           config = builtins.readFile configFile;
           processes = lib.mapAttrs (
             name: proc:
@@ -356,4 +358,4 @@ in
     processesModule
     module
   ];
-}).config.drv
+}).config.script

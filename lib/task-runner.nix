@@ -106,13 +106,13 @@ let
         };
 
         # generated
-        drv = mkOption {
+        script = mkOption {
           type = types.package;
           readOnly = true;
         };
       };
 
-      config.drv =
+      config.script =
         let
           inherit (pkgs) gum;
 
@@ -288,7 +288,7 @@ let
         // {
           command = commandText;
           tasks = lib.mapAttrs (_: task: {
-            inherit (task) description drv;
+            inherit (task) description;
             command = builtins.readFile task.bin;
             before = task.before or [ ];
             after = task.after or [ ];
@@ -304,4 +304,4 @@ in
     runnerModule
     args
   ];
-}).config.drv
+}).config.script

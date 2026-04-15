@@ -74,7 +74,7 @@ in
       type = types.str;
       readOnly = true;
     };
-    drv = mkOption {
+    script = mkOption {
       type = types.package;
       readOnly = true;
     };
@@ -105,43 +105,36 @@ in
       escapeForDoubleQuotes = v: lib.replaceStrings [ "\\" "\"" "`" "!" ] [ "\\\\" "\\\"" "\\`" "\\!" ] v;
     in
     {
-      drv =
-        pkgs.writeShellApplication {
-          name = taskName;
-          runtimeInputs =
-            config.packages ++ lib.optional (config.confirm != false || config.requireArgs) pkgs.gum;
-          runtimeEnv = staticEnv;
-          inherit (config) excludeShellChecks;
-          text = lib.concatStringsSep "\n" (
-            lib.filter (s: s != "") [
-              (lib.optionalString (config.confirm != false) ''
-                if ! gum confirm ${
-                  if builtins.isString config.confirm then ''"${config.confirm}"'' else ''"Run ${taskName}?"''
-                }; then
-                  gum style --foreground ${config.mutedColor} "⊘ ${taskName} cancelled"
-                  exit 2
-                fi
-              '')
-              (lib.optionalString config.requireArgs ''
-                if [[ $# -eq 0 ]]; then
-                  gum style --foreground ${config.errorColor} "✗ ${taskName}: arguments required"
-                  exit 1
-                fi
-              '')
-              (lib.concatStringsSep "\n" (
-                lib.mapAttrsToList (k: v: ''export ${k}="${escapeForDoubleQuotes v}"'') dynamicEnv
-              ))
-              (if config.requireArgs then "${config.command} \"$@\"" else config.command)
-            ]
-          );
-          meta = lib.optionalAttrs (config.description != null) {
-            inherit (config) description;
-          };
-        }
-        // lib.optionalAttrs (config.description != null) {
-          inherit (config) description;
-        };
+      script = pkgs.writeShellApplication {
+        name = taskName;
+        runtimeInputs =
+          config.packages ++ lib.optional (config.confirm != false || config.requireArgs) pkgs.gum;
+        runtimeEnv = staticEnv;
+        inherit (config) excludeShellChecks;
+        text = lib.concatStringsSep "\n" (
+          lib.filter (s: s != "") [
+            (lib.optionalString (config.confirm != false) ''
+              if ! gum confirm ${
+                if builtins.isString config.confirm then ''"${config.confirm}"'' else ''"Run ${taskName}?"''
+              }; then
+                gum style --foreground ${config.mutedColor} "⊘ ${taskName} cancelled"
+                exit 2
+              fi
+            '')
+            (lib.optionalString config.requireArgs ''
+              if [[ $# -eq 0 ]]; then
+                gum style --foreground ${config.errorColor} "✗ ${taskName}: arguments required"
+                exit 1
+              fi
+            '')
+            (lib.concatStringsSep "\n" (
+              lib.mapAttrsToList (k: v: ''export ${k}="${escapeForDoubleQuotes v}"'') dynamicEnv
+            ))
+            (if config.requireArgs then "${config.command} \"$@\"" else config.command)
+          ]
+        );
+      };
 
-      bin = lib.getExe config.drv;
+      bin = lib.getExe config.script;
     };
 }
