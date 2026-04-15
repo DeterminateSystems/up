@@ -208,7 +208,6 @@ let
           serializeProcess =
             name: proc:
             let
-              allPackages = lib.unique (config.packages ++ proc.packages);
               environment = toEnvList proc.staticEnvVars;
             in
             stripNulls {
@@ -306,7 +305,11 @@ let
                 yq -P '.' "$jsonPath" > $out
               '';
 
-          allPackages = lib.unique ([ config.package ] ++ config.packages);
+          allPackages = lib.unique (
+            [ config.package ]
+            ++ config.packages
+            ++ lib.flatten (lib.mapAttrsToList (_: proc: proc.packages) config.processes)
+          );
 
           commandText =
             let
