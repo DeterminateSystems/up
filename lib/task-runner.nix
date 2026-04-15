@@ -132,10 +132,17 @@ let
 
           runStep = name: bin: args: ''
             gum style --foreground 212 '▶ ${name}'
-            if ! ${bin} ${args}; then
-              exit 1
+            set +e
+            ${bin} ${args}
+            _exit=$?
+            set -e
+            if [[ $_exit -eq 2 ]]; then
+              :
+            elif [[ $_exit -ne 0 ]]; then
+              exit $_exit
+            else
+              gum style --foreground 2 "✓ ${name}"
             fi
-            gum style --foreground 2 "✓ ${name}"
           '';
 
           caseArms = lib.concatStringsSep "\n" (
