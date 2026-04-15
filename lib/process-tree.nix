@@ -100,7 +100,11 @@ let
           type = types.nullOr types.str;
           default = null;
         };
-        environment = mkOption {
+        staticEnvironment = mkOption {
+          type = types.either (types.attrsOf types.str) (types.listOf types.str);
+          default = { };
+        };
+        dynamicEnvironment = mkOption {
           type = types.either (types.attrsOf types.str) (types.listOf types.str);
           default = { };
         };
@@ -159,7 +163,11 @@ let
           type = types.listOf types.package;
           default = [ ];
         };
-        environment = mkOption {
+        staticEnvironment = mkOption {
+          type = types.either (types.attrsOf types.str) (types.listOf types.str);
+          default = { };
+        };
+        dynamicEnvironment = mkOption {
           type = types.either (types.attrsOf types.str) (types.listOf types.str);
           default = { };
         };
@@ -181,12 +189,24 @@ let
             proc:
             let
               allPackages = lib.unique (config.packages ++ proc.packages);
-              environment = toEnvList proc.environment;
+              staticEnvironment = toEnvList proc.staticEnvironment;
             in
             stripNulls {
-              inherit (proc) command working_dir;
+              inherit (proc) working_dir;
+
+              command =
+                if proc.dynamicEnvironment == { } then
+                  proc.command
+                else
+                  let
+                    exports = lib.concatStringsSep "; " (
+                      lib.mapAttrsToList (k: v: "export ${k}=${v}") proc.dynamicEnvironment
+                    );
+                  in
+                  "${exports}; ${proc.command}";
+
               depends_on = if proc.depends_on == { } then null else proc.depends_on;
-              environment = if environment == [ ] then null else environment;
+              environment = if staticEnvironment == [ ] then null else staticEnvironment;
               liveness_probe =
                 if proc.liveness_probe == null then
                   null
@@ -234,13 +254,17 @@ let
                   };
             };
 
+          runtimeExports = lib.concatStringsSep "\n" (
+            lib.mapAttrsToList (k: v: ''export ${k}="${v}"'') config.dynamicEnvironment
+          );
+
           configFile =
             pkgs.runCommand config.configFileName
               {
                 json = builtins.toJSON {
                   inherit (config) log_level;
                   log_location = "/tmp/pc-debug.log";
-                  environment = toEnvList config.environment;
+                  environment = toEnvList config.staticEnvironment;
                   processes = lib.mapAttrs (_: serializeProcess) config.processes;
                 };
                 passAsFile = [ "json" ];
@@ -254,6 +278,8 @@ let
           inherit (config) name;
           runtimeInputs = [ config.package ];
           text = ''
+            ${runtimeExports}
+
             export PATH="${lib.concatStringsSep ":" (map (p: "${p}/bin") config.packages)}:$PATH"
 
             process-compose up \
