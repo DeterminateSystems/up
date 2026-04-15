@@ -112,7 +112,7 @@
                   forSystems = [ system ];
                   children = builtins.mapAttrs (_name: task: {
                     forSystems = [ system ];
-                    evalChecks.isAttrsOrDerivation = builtins.isAttrs task || lib.isDerivation task;
+                    evalChecks.isAttrsOrDerivation = builtins.isAttrs task;
                     what = task.description or "runnable task";
                   }) tasks;
                 }) output
