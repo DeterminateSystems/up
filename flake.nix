@@ -223,7 +223,11 @@
                   children = builtins.mapAttrs (_name: tree: {
                     forSystems = [ system ];
                     evalChecks.isDerivation = lib.isDerivation tree;
-                    what = tree.description or "process tree";
+                    children = builtins.mapAttrs (procName: proc: {
+                      forSystems = [ system ];
+                      what = if proc.description != null then proc.description else "process";
+                      shortDescription = if proc.command != null then proc.command else "";
+                    }) (tree.processes or { });
                   }) trees;
                 }) output
               );
