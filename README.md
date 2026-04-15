@@ -73,11 +73,16 @@ Here's an example:
           redis
         ];
 
+        # static environment variables
         environment = {
-          PGDATA = ".state/postgres";
           PGDATABASE = "testing";
-          PGHOST = "127.0.0.1";
-          PGPORT = "5432";
+          PGPORT = toString 5432;
+        };
+
+        # calculated at runtime
+        shellEnvironment = rec {
+          PGDATA = "$PWD/.state/postgres";
+          PGHOST = PGDATA;
         };
 
         processes = {

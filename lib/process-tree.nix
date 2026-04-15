@@ -100,11 +100,11 @@ let
           type = types.nullOr types.str;
           default = null;
         };
-        environment = mkOption {
+        staticEnvVars = mkOption {
           type = types.either (types.attrsOf types.str) (types.listOf types.str);
           default = { };
         };
-        shellEnvironment = mkOption {
+        runtimeEnvVars = mkOption {
           type = types.either (types.attrsOf types.str) (types.listOf types.str);
           default = { };
         };
@@ -163,11 +163,11 @@ let
           type = types.listOf types.package;
           default = [ ];
         };
-        environment = mkOption {
+        staticEnvVars = mkOption {
           type = types.either (types.attrsOf types.str) (types.listOf types.str);
           default = { };
         };
-        shellEnvironment = mkOption {
+        runtimeEnvVars = mkOption {
           type = types.either (types.attrsOf types.str) (types.listOf types.str);
           default = { };
         };
@@ -189,21 +189,35 @@ let
             proc:
             let
               allPackages = lib.unique (config.packages ++ proc.packages);
-              environment = toEnvList proc.environment;
+              environment = toEnvList proc.staticEnvVars;
             in
             stripNulls {
               inherit (proc) working_dir;
 
               command =
-                if proc.shellEnvironment == { } then
+                let
+                  envList = toEnvList proc.runtimeEnvVars;
+                in
+                if envList == [ ] then
                   proc.command
                 else
                   let
-                    exports = lib.concatStringsSep "; " (
-                      lib.mapAttrsToList (k: v: "export ${k}=${v}") proc.shellEnvironment
+                    exports = lib.concatStringsSep "\n" (
+                      map (
+                        e:
+                        let
+                          key = builtins.head (builtins.split "=" e);
+                          val = lib.removePrefix "${key}=" e;
+                        in
+                        ''export ${key}="${val}"''
+                      ) envList
                     );
                   in
-                  "${exports}; ${proc.command}";
+                  ''
+                    ${exports}
+
+                    ${proc.command}
+                  '';
 
               depends_on = if proc.depends_on == { } then null else proc.depends_on;
               environment = if environment == [ ] then null else environment;
@@ -255,7 +269,7 @@ let
             };
 
           runtimeExports = lib.concatStringsSep "\n" (
-            lib.mapAttrsToList (k: v: ''export ${k}="${v}"'') config.shellEnvironment
+            lib.mapAttrsToList (k: v: ''export ${k}="${v}"'') config.runtimeEnvVars
           );
 
           configFile =
@@ -264,7 +278,7 @@ let
                 json = builtins.toJSON {
                   inherit (config) log_level;
                   log_location = "/tmp/pc-debug.log";
-                  environment = toEnvList config.environment;
+                  environment = toEnvList config.staticEnvVars;
                   processes = lib.mapAttrs (_: serializeProcess) config.processes;
                 };
                 passAsFile = [ "json" ];
