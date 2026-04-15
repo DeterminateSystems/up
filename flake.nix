@@ -4,10 +4,6 @@
   inputs = {
     nixpkgs.url = "https://flakehub.com/f/NixOS/nixpkgs/0.1";
     flake-schemas.url = "https://flakehub.com/f/DeterminateSystems/flake-schemas/0";
-    fenix = {
-      url = "https://flakehub.com/f/nix-community/fenix/0.1";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
   };
 
   outputs =
