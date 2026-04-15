@@ -323,18 +323,20 @@ let
               ];
             in
             lib.concatStringsSep "\n\n" parts;
+
+          drv = pkgs.writeShellApplication {
+            inherit (config) name excludeShellChecks;
+            runtimeInputs = allPackages;
+            text = commandText;
+          };
         in
-        pkgs.writeShellApplication {
-          inherit (config) name excludeShellChecks;
-          runtimeInputs = allPackages;
-          text = commandText;
-        }
+        drv
         // lib.optionalAttrs (config.description != null) {
           inherit (config) description;
         }
         // {
-          command = commandText;
-          config = configFile;
+          script = builtins.readFile "${drv}/bin/${config.name}";
+          config = builtins.readFile configFile;
         };
     };
 in
