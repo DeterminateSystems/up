@@ -216,23 +216,19 @@ let
               command =
                 let
                   envList = toEnvList proc.runtimeEnvVars;
+                  exports = lib.concatStringsSep "\n" (map toExport envList);
+                  script = pkgs.writeShellApplication {
+                    name = "run-${name}";
+                    excludeShellChecks = lib.unique (config.excludeShellChecks ++ proc.excludeShellChecks);
+                    text = lib.concatStringsSep "\n\n" (
+                      lib.filter (s: s != "") [
+                        (lib.optionalString (envList != [ ]) exports)
+                        proc.command
+                      ]
+                    );
+                  };
                 in
-                if envList == [ ] then
-                  proc.command
-                else
-                  let
-                    exports = lib.concatStringsSep "\n" (map toExport envList);
-                    script = pkgs.writeShellApplication {
-                      name = "run-${name}";
-                      excludeShellChecks = lib.unique (config.excludeShellChecks ++ proc.excludeShellChecks);
-                      text = ''
-                        ${exports}
-
-                        ${proc.command}
-                      '';
-                    };
-                  in
-                  "${script}/bin/run-${name}";
+                "${script}/bin/run-${name}";
 
               depends_on = if proc.depends_on == { } then null else proc.depends_on;
               environment = if environment == [ ] then null else environment;
