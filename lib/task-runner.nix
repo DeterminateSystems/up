@@ -288,7 +288,7 @@ let
         // {
           command = commandText;
           tasks = lib.mapAttrs (_: task: {
-            inherit (task) description;
+            inherit (task) description drv;
             command = builtins.readFile task.bin;
             before = task.before or [ ];
             after = task.after or [ ];
