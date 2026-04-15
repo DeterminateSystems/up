@@ -337,19 +337,18 @@ let
         // {
           script = builtins.readFile "${drv}/bin/${config.name}";
           config = builtins.readFile configFile;
-          processes = lib.mapAttrs (name: proc: {
-            inherit name;
-            command = proc.command;
-            resolvedCommand =
-              let
-                val = serializeProcess name proc;
-              in
-              {
-                inherit (val) environment;
-                script = builtins.readFile val.command;
-              };
-            inherit (proc) staticEnvVars runtimeEnvVars depends_on;
-          }) config.processes;
+          processes = lib.mapAttrs (
+            name: proc:
+            proc
+            // {
+              inherit name;
+              resolved =
+                let
+                  val = serializeProcess name proc;
+                in
+                val // { command = builtins.readFile val.command; };
+            }
+          ) config.processes;
         };
     };
 in
