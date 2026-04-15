@@ -58,6 +58,17 @@ in
       default = null;
       description = "Command to check if the task needs to run. Exit 0 means skip.";
     };
+
+    # colors
+    errorColor = mkOption {
+      type = types.str;
+      default = "1";
+    };
+    mutedColor = mkOption {
+      type = types.str;
+      default = "240";
+    };
+
     # generated
     bin = mkOption {
       type = types.str;
@@ -108,13 +119,13 @@ in
                   if ! gum confirm ${
                     if builtins.isString config.confirm then ''"${config.confirm}"'' else ''"Run ${taskName}?"''
                   }; then
-                    gum style --foreground 240 "⊘ ${taskName} cancelled"
+                    gum style --foreground ${config.mutedColor} "⊘ ${taskName} cancelled"
                     exit 2
                   fi
                 '')
                 (lib.optionalString config.requireArgs ''
                   if [[ $# -eq 0 ]]; then
-                    gum style --foreground 1 "✗ ${taskName}: arguments required"
+                    gum style --foreground ${config.errorColor} "✗ ${taskName}: arguments required"
                     exit 1
                   fi
                 '')

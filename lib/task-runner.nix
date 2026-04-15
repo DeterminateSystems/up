@@ -87,6 +87,24 @@ let
           default = { };
         };
 
+        # colors
+        accentColor = mkOption {
+          type = types.str;
+          default = "212";
+        };
+        successColor = mkOption {
+          type = types.str;
+          default = "2";
+        };
+        errorColor = mkOption {
+          type = types.str;
+          default = "1";
+        };
+        mutedColor = mkOption {
+          type = types.str;
+          default = "240";
+        };
+
         # generated
         drv = mkOption {
           type = types.package;
@@ -99,6 +117,24 @@ let
           inherit (pkgs) gum;
 
           resolvedTasks =
+            let
+              resolveTask =
+                name: v:
+                if isTask v then
+                  v
+                else
+                  (lib.evalModules {
+                    modules = [
+                      taskModule
+                      { config._module.args.name = name; }
+                      {
+                        errorColor = config.errorColor;
+                        mutedColor = config.mutedColor;
+                      }
+                      v
+                    ];
+                  }).config;
+            in
             assert lib.assertMsg (config.tasks != { }) "mkTaskRunner: '${config.name}' has no tasks";
             assert lib.assertMsg (
               !builtins.hasAttr "all" config.tasks
@@ -113,6 +149,13 @@ let
             task = resolvedTasks.${n};
           }) orderedNames;
 
+          inherit (config)
+            accentColor
+            errorColor
+            mutedColor
+            successColor
+            ;
+
           header =
             if config.description != null then
               ''gum style --border rounded --padding "0 1" --bold "${config.name} — ${escapeSingleQuote config.description}"''
@@ -125,8 +168,8 @@ let
               maxLen = lib.foldl (
                 acc: n: if lib.stringLength n > acc then lib.stringLength n else acc
               ) 0 allNames;
-              accent = "\\e[38;5;212m";
-              muted = "\\e[38;5;240m";
+              accent = "\\e[38;5;${accentColor}m";
+              muted = "\\e[38;5;${mutedColor}m";
               reset = "\\e[0m";
               mkRow =
                 name: desc:
@@ -144,7 +187,7 @@ let
             ''echo -e "${lib.concatStringsSep "\\n" rows}"'';
 
           runStep = name: bin: args: ''
-            gum style --foreground 212 '▶ ${name}'
+            gum style --foreground ${accentColor} '▶ ${name}'
             set +e
             ${bin} ${args} 2>&1 | sed 's/^/  /'
             _exit=''${PIPESTATUS[0]}
@@ -184,11 +227,11 @@ let
                 map (
                   { name, task }:
                   if task.requireArgs then
-                    ''gum style --foreground 240 "⊘ ${name} skipped (requires arguments)"''
+                    ''gum style --foreground ${mutedColor} "⊘ ${name} skipped (requires arguments)"''
                   else if task.status or null != null then
                     ''
                       if ${task.status}; then
-                        gum style --foreground 240 "⊘ ${name} skipped"
+                        gum style --foreground ${mutedColor} "⊘ ${name} skipped"
                       else
                         ${runStep name task.bin ""}
                       fi
@@ -203,9 +246,11 @@ let
                 steps
                 (lib.optionalString (skipped != [ ]) ''
                   echo ""
-                  gum style --foreground 240 "Some tasks were skipped. Run them individually to provide arguments:"
+                  gum style --foreground ${mutedColor} "Some tasks were skipped. Run them individually to provide arguments:"
                   ${lib.concatStringsSep "\n" (
-                    map ({ name, ... }: ''gum style --foreground 212 "  ${config.name} ${name} <args>"'') skipped
+                    map (
+                      { name, ... }: ''gum style --foreground ${accentColor} "  ${config.name} ${name} <args>"''
+                    ) skipped
                   )}
                 '')
               ]
@@ -228,7 +273,7 @@ let
                 ;;
               ${caseArms}
               *)
-                gum style --foreground 1 "Unknown task: $1"
+                gum style --foreground ${errorColor} "Unknown task: $1"
                 echo "Run '${config.name} --list' to see available tasks"
                 exit 1
                 ;;
