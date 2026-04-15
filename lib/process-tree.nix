@@ -104,7 +104,7 @@ let
           type = types.either (types.attrsOf types.str) (types.listOf types.str);
           default = { };
         };
-        dynamicEnvironment = mkOption {
+        shellEnvironment = mkOption {
           type = types.either (types.attrsOf types.str) (types.listOf types.str);
           default = { };
         };
@@ -167,7 +167,7 @@ let
           type = types.either (types.attrsOf types.str) (types.listOf types.str);
           default = { };
         };
-        dynamicEnvironment = mkOption {
+        shellEnvironment = mkOption {
           type = types.either (types.attrsOf types.str) (types.listOf types.str);
           default = { };
         };
@@ -195,12 +195,12 @@ let
               inherit (proc) working_dir;
 
               command =
-                if proc.dynamicEnvironment == { } then
+                if proc.shellEnvironment == { } then
                   proc.command
                 else
                   let
                     exports = lib.concatStringsSep "; " (
-                      lib.mapAttrsToList (k: v: "export ${k}=${v}") proc.dynamicEnvironment
+                      lib.mapAttrsToList (k: v: "export ${k}=${v}") proc.shellEnvironment
                     );
                   in
                   "${exports}; ${proc.command}";
@@ -255,7 +255,7 @@ let
             };
 
           runtimeExports = lib.concatStringsSep "\n" (
-            lib.mapAttrsToList (k: v: ''export ${k}="${v}"'') config.dynamicEnvironment
+            lib.mapAttrsToList (k: v: ''export ${k}="${v}"'') config.shellEnvironment
           );
 
           configFile =
