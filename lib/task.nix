@@ -16,8 +16,11 @@ in
       default = null;
     };
     command = mkOption {
-      type = types.nullOr types.str;
-      default = null;
+      type = types.str;
+    };
+    requireArgs = mkOption {
+      type = types.bool;
+      default = false;
     };
     packages = mkOption {
       type = types.listOf types.package;
@@ -88,40 +91,35 @@ in
     {
       drv =
         let
-          baseDrv =
-            if config.command == null then
-              assert lib.assertMsg (
-                config.packages != [ ]
-              ) "taskModule: '${taskName}' must have either a command or at least one package";
-              builtins.head config.packages
-            else
-              pkgs.writeShellApplication {
-                name = taskName;
-                runtimeInputs = config.packages;
-                runtimeEnv = staticEnv;
-                inherit (config) excludeShellChecks;
-                text = ''
-                  ${lib.concatStringsSep "\n" (
-                    lib.mapAttrsToList (k: v: ''export ${k}="${escapeForDoubleQuotes v}"'') dynamicEnv
-                  )}
-                  ${config.command}
-                '';
-                meta = lib.optionalAttrs (config.description != null) {
-                  inherit (config) description;
-                };
-              };
+          baseDrv = pkgs.writeShellApplication {
+            name = taskName;
+            runtimeInputs = config.packages ++ [ pkgs.gum ];
+            runtimeEnv = staticEnv;
+            inherit (config) excludeShellChecks;
+            text = lib.concatStringsSep "\n" (
+              lib.filter (s: s != "") [
+                (lib.optionalString config.requireArgs ''
+                  if [[ $# -eq 0 ]]; then
+                    gum style --foreground 1 "✗ ${taskName}: arguments required"
+                    exit 1
+                  fi
+                '')
+                (lib.concatStringsSep "\n" (
+                  lib.mapAttrsToList (k: v: ''export ${k}="${escapeForDoubleQuotes v}"'') dynamicEnv
+                ))
+                (if config.requireArgs then "${config.command} \"$@\"" else config.command)
+              ]
+            );
+            meta = lib.optionalAttrs (config.description != null) {
+              inherit (config) description;
+            };
+          };
         in
         baseDrv
         // lib.optionalAttrs (config.description != null) {
           inherit (config) description;
         };
 
-      bin =
-        if config.command == null then
-          lib.getExe' (builtins.head config.packages) (
-            (builtins.head config.packages).meta.mainProgram or (lib.getName (builtins.head config.packages))
-          )
-        else
-          lib.getExe config.drv;
+      bin = lib.getExe config.drv;
     };
 }

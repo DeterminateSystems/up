@@ -130,13 +130,12 @@ let
             ) orderedTasks
           );
 
-          runStep = name: bin: ''
-            if gum spin --spinner dot --show-output --title "$(gum style --foreground 212 '[${name}]') running..." -- ${bin}; then
-              gum style --foreground 2 "✓ ${name}"
-            else
-              gum style --foreground 1 "✗ ${name} failed"
+          runStep = name: bin: args: ''
+            gum style --foreground 212 '▶ ${name}'
+            if ! ${bin} ${args}; then
               exit 1
             fi
+            gum style --foreground 2 "✓ ${name}"
           '';
 
           caseArms = lib.concatStringsSep "\n" (
@@ -146,33 +145,51 @@ let
                 deps = builtins.filter (
                   depName: builtins.any (e: e.from == depName && e.to == name) edges
                 ) orderedNames;
-                depSteps = lib.concatStringsSep "\n" (map (dep: runStep dep resolvedTasks.${dep}.bin) deps);
+                depSteps = lib.concatStringsSep "\n" (map (dep: runStep dep resolvedTasks.${dep}.bin "") deps);
               in
               ''
                 ${name})
                   shift
                   ${depSteps}
-                  ${runStep name task.bin}
+                  ${runStep name task.bin (if task.requireArgs then ''"$@"'' else "")}
                   ;;
               ''
             ) orderedTasks
           );
 
-          runAllSteps = lib.concatStringsSep "\n" (
-            map (
-              { name, task }:
-              if task.status or null != null then
-                ''
-                  if ${task.status}; then
-                    gum style --foreground 240 "⊘ ${name} skipped"
+          runAllSteps =
+            let
+              skipped = builtins.filter ({ task, ... }: task.requireArgs) orderedTasks;
+              steps = lib.concatStringsSep "\n" (
+                map (
+                  { name, task }:
+                  if task.requireArgs then
+                    ''gum style --foreground 240 "⊘ ${name} skipped (requires arguments)"''
+                  else if task.status or null != null then
+                    ''
+                      if ${task.status}; then
+                        gum style --foreground 240 "⊘ ${name} skipped"
+                      else
+                        ${runStep name task.bin ""}
+                      fi
+                    ''
                   else
-                    ${runStep name task.bin}
-                  fi
-                ''
-              else
-                runStep name task.bin
-            ) orderedTasks
-          );
+                    runStep name task.bin ""
+                ) orderedTasks
+              );
+            in
+            lib.concatStringsSep "\n" (
+              lib.filter (s: s != "") [
+                steps
+                (lib.optionalString (skipped != [ ]) ''
+                  echo ""
+                  gum style --foreground 240 "Some tasks were skipped. Run them individually to provide arguments:"
+                  ${lib.concatStringsSep "\n" (
+                    map ({ name, ... }: ''gum style --foreground 212 "  ${config.name} ${name} <args>"'') skipped
+                  )}
+                '')
+              ]
+            );
 
           commandText = ''
             if [[ $# -eq 0 || "$1" == "--list" || "$1" == "-l" ]]; then
