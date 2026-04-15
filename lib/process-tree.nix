@@ -136,6 +136,10 @@ let
           type = types.nullOr (types.submodule shutdownModule);
           default = null;
         };
+        excludeShellChecks = mkOption {
+          type = types.listOf types.str;
+          default = [ ];
+        };
       };
     };
 
@@ -183,6 +187,10 @@ let
           type = types.either (types.attrsOf types.str) (types.listOf types.str);
           default = { };
         };
+        excludeShellChecks = mkOption {
+          type = types.listOf types.str;
+          default = [ ];
+        };
         processes = mkOption {
           type = types.attrsOf (types.submodule processModule);
           default = { };
@@ -217,6 +225,7 @@ let
                     exports = lib.concatStringsSep "\n" (map toExport envList);
                     script = pkgs.writeShellApplication {
                       name = "run-${name}";
+                      excludeShellChecks = lib.unique (config.excludeShellChecks ++ proc.excludeShellChecks);
                       text = ''
                         ${exports}
 
@@ -316,7 +325,7 @@ let
             lib.concatStringsSep "\n\n" parts;
         in
         pkgs.writeShellApplication {
-          inherit (config) name;
+          inherit (config) name excludeShellChecks;
           runtimeInputs = allPackages;
           text = commandText;
         }

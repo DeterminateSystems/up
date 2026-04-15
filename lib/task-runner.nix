@@ -52,7 +52,7 @@ let
           hasUnresolvedDep =
             name: builtins.any (e: e.to == name && builtins.elem e.from remaining) resolvedEdges;
           ready = builtins.filter (n: !hasUnresolvedDep n) remaining;
-          rest = builtins.filter hasUnresolvedDep;
+          rest = builtins.filter hasUnresolvedDep remaining;
         in
         if remaining == [ ] then
           [ ]
@@ -160,11 +160,8 @@ let
               ''
             ) orderedTasks
           );
-        in
-        pkgs.writeShellApplication {
-          inherit (config) name;
-          runtimeInputs = lib.unique config.packages;
-          text = ''
+
+          commandText = ''
             if [[ $# -eq 0 || "$1" == "--list" || "$1" == "-l" ]]; then
               printf '%s - %s\n\n' '${config.name}' '${
                 if config.description != null then
@@ -191,6 +188,14 @@ let
                 ;;
             esac
           '';
+        in
+        pkgs.writeShellApplication {
+          inherit (config) name;
+          runtimeInputs = lib.unique config.packages;
+          text = commandText;
+        }
+        // {
+          command = commandText;
         }
         // lib.optionalAttrs (config.description != null) {
           inherit (config) description;
