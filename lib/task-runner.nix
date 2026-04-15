@@ -288,7 +288,8 @@ let
         // {
           command = commandText;
           tasks = lib.mapAttrs (_: task: {
-            inherit (task) description bin;
+            inherit (task) description;
+            command = builtins.readFile task.bin;
             before = task.before or [ ];
             after = task.after or [ ];
           }) resolvedTasks;
