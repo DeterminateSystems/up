@@ -304,6 +304,8 @@ let
               processComposeCommand = lib.concatStringsSep " " [
                 "process-compose"
                 "up"
+                "--config"
+                configFile
               ];
 
               parts = lib.filter (s: s != "") [
