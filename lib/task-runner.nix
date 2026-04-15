@@ -94,6 +94,8 @@ let
 
       config.drv =
         let
+          inherit (pkgs) gum;
+
           resolvedTasks =
             assert lib.assertMsg (
               !builtins.hasAttr "all" config.tasks
@@ -108,16 +110,34 @@ let
             task = resolvedTasks.${n};
           }) orderedNames;
 
+          header =
+            if config.description != null then
+              ''gum style --border rounded --padding "0 1" --bold "${config.name} — ${escapeSingleQuote config.description}"''
+            else
+              ''gum style --border rounded --padding "0 1" --bold "${config.name}"'';
+
           listLines = lib.concatStringsSep "\n" (
             map (
               { name, task }:
+              let
+                desc = if task.description != null then escapeSingleQuote task.description else "";
+              in
               ''
-                printf '  %-20s %s\n' '${name}' '${
-                  lib.optionalString (task.description != null) (escapeSingleQuote task.description)
-                }'
+                printf '  %s  %s\n' \
+                  "$(gum style --foreground 212 '${name}')" \
+                  "$(gum style --foreground 240 '${desc}')"
               ''
             ) orderedTasks
           );
+
+          runStep = name: bin: ''
+            if gum spin --spinner dot --show-output --title "$(gum style --foreground 212 '[${name}]') running..." -- ${bin}; then
+              gum style --foreground 2 "✓ ${name}"
+            else
+              gum style --foreground 1 "✗ ${name} failed"
+              exit 1
+            fi
+          '';
 
           caseArms = lib.concatStringsSep "\n" (
             map (
@@ -126,18 +146,13 @@ let
                 deps = builtins.filter (
                   depName: builtins.any (e: e.from == depName && e.to == name) edges
                 ) orderedNames;
-                depSteps = lib.concatStringsSep "\n" (
-                  map (depName: ''
-                    echo "[${depName}] running..."
-                    ${resolvedTasks.${depName}.bin}
-                  '') deps
-                );
+                depSteps = lib.concatStringsSep "\n" (map (dep: runStep dep resolvedTasks.${dep}.bin) deps);
               in
               ''
                 ${name})
                   shift
                   ${depSteps}
-                  exec ${task.bin} "$@"
+                  ${runStep name task.bin}
                   ;;
               ''
             ) orderedTasks
@@ -146,33 +161,31 @@ let
           runAllSteps = lib.concatStringsSep "\n" (
             map (
               { name, task }:
-              ''
-                echo "[${name}] running..."
-                ${task.bin}
-              ''
-              + lib.optionalString (task.status or null != null) ''
-                if ${task.status}; then
-                  echo "[${name}] skipped (already done)"
-                else
-                  echo "[${name}] running..."
-                  ${task.bin}
-                fi
-              ''
+              if task.status or null != null then
+                ''
+                  if ${task.status}; then
+                    gum style --foreground 240 "⊘ ${name} skipped"
+                  else
+                    ${runStep name task.bin}
+                  fi
+                ''
+              else
+                runStep name task.bin
             ) orderedTasks
           );
 
           commandText = ''
             if [[ $# -eq 0 || "$1" == "--list" || "$1" == "-l" ]]; then
-              printf '%s - %s\n\n' '${config.name}' '${
-                if config.description != null then
-                  (escapeSingleQuote config.description)
-                else
-                  "Generated task runner"
-              }'
-              echo "Available tasks:"
+              ${header}
+              echo ""
+              gum style --bold "Available tasks:"
+              echo ""
               ${listLines}
               echo ""
-              printf '  %-20s %s\n' 'all' 'Run all tasks in dependency order'
+              printf '  %s  %s\n' \
+                "$(gum style --foreground 212 'all')" \
+                "$(gum style --foreground 240 'Run all tasks in dependency order')"
+              echo ""
               exit 0
             fi
 
@@ -182,7 +195,7 @@ let
                 ;;
               ${caseArms}
               *)
-                echo "Unknown task: $1"
+                gum style --foreground 1 "Unknown task: $1"
                 echo "Run '${config.name} --list' to see available tasks"
                 exit 1
                 ;;
@@ -191,7 +204,7 @@ let
         in
         pkgs.writeShellApplication {
           inherit (config) name;
-          runtimeInputs = lib.unique config.packages;
+          runtimeInputs = lib.unique (config.packages ++ [ gum ]);
           text = commandText;
         }
         // {
