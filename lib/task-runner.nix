@@ -97,6 +97,7 @@ let
           inherit (pkgs) gum;
 
           resolvedTasks =
+            assert lib.assertMsg (config.tasks != { }) "mkTaskRunner: '${config.name}' has no tasks";
             assert lib.assertMsg (
               !builtins.hasAttr "all" config.tasks
             ) "mkTaskRunner: '${config.name}' has a task named 'all', which is reserved";
@@ -133,13 +134,13 @@ let
           runStep = name: bin: args: ''
             gum style --foreground 212 '▶ ${name}'
             set +e
-            ${bin} ${args}
-            _exit=$?
+            ${bin} ${args} 2>&1 | sed 's/^/  /'
+            _exit=''${PIPESTATUS[0]}
             set -e
-            if [[ $_exit -eq 2 ]]; then
+            if [[ "''${_exit}" -eq 2 ]]; then
               :
-            elif [[ $_exit -ne 0 ]]; then
-              exit $_exit
+            elif [[ "''${_exit}" -ne 0 ]]; then
+              exit "''${_exit}"
             else
               gum style --foreground 2 "✓ ${name}"
             fi
