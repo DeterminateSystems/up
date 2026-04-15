@@ -100,7 +100,7 @@ let
           type = types.nullOr types.str;
           default = null;
         };
-        staticEnvironment = mkOption {
+        environment = mkOption {
           type = types.either (types.attrsOf types.str) (types.listOf types.str);
           default = { };
         };
@@ -163,7 +163,7 @@ let
           type = types.listOf types.package;
           default = [ ];
         };
-        staticEnvironment = mkOption {
+        environment = mkOption {
           type = types.either (types.attrsOf types.str) (types.listOf types.str);
           default = { };
         };
@@ -189,7 +189,7 @@ let
             proc:
             let
               allPackages = lib.unique (config.packages ++ proc.packages);
-              staticEnvironment = toEnvList proc.staticEnvironment;
+              environment = toEnvList proc.environment;
             in
             stripNulls {
               inherit (proc) working_dir;
@@ -206,7 +206,7 @@ let
                   "${exports}; ${proc.command}";
 
               depends_on = if proc.depends_on == { } then null else proc.depends_on;
-              environment = if staticEnvironment == [ ] then null else staticEnvironment;
+              environment = if environment == [ ] then null else environment;
               liveness_probe =
                 if proc.liveness_probe == null then
                   null
@@ -264,7 +264,7 @@ let
                 json = builtins.toJSON {
                   inherit (config) log_level;
                   log_location = "/tmp/pc-debug.log";
-                  environment = toEnvList config.staticEnvironment;
+                  environment = toEnvList config.environment;
                   processes = lib.mapAttrs (_: serializeProcess) config.processes;
                 };
                 passAsFile = [ "json" ];
