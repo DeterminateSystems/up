@@ -297,6 +297,8 @@ let
                 yq -P '.' "$jsonPath" > $out
               '';
 
+          allPackages = lib.unique ([ config.package ] ++ config.packages);
+
           commandText =
             let
               processComposeCommand = lib.concatStringsSep " " [
@@ -306,17 +308,14 @@ let
 
               parts = lib.filter (s: s != "") [
                 (lib.optionalString (toEnvList config.runtimeEnvVars != [ ]) (lib.removeSuffix "\n" runtimeExports))
-                (lib.optionalString (config.packages != [ ])
-                  ''export PATH="${lib.concatStringsSep ":" (map (p: "${p}/bin") config.packages)}:$PATH"''
-                )
                 processComposeCommand
               ];
             in
-            (lib.concatStringsSep "\n\n" parts) + "\n";
+            lib.concatStringsSep "\n\n" parts;
         in
         pkgs.writeShellApplication {
           inherit (config) name;
-          runtimeInputs = [ config.package ];
+          runtimeInputs = allPackages;
           text = commandText;
         }
         // lib.optionalAttrs (config.description != null) {
