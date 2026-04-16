@@ -1,7 +1,6 @@
 { lib, pkgs }:
 
 {
-  name,
   command,
   watch ? [ "." ],
   extensions ? [ ],
@@ -47,7 +46,7 @@ in
   inherit description;
   raw = true;
   command = pkgs.writeShellApplication {
-    inherit name;
+    name = "watch";
     runtimeInputs = allPackages;
     runtimeEnv = env;
     text = watchexecCmd;
