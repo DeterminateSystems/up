@@ -173,9 +173,19 @@ let
           runStep = name: bin: args: ''
             gum style --foreground ${accentColor} '▶ ${name}'
             set +e
-            ${bin} ${args} 2>&1 | sed 's/^/  /'
-            _exit=''${PIPESTATUS[0]}
+
+            _output=$(${bin} ${args} 2>&1)
+            _exit=$?
             set -e
+
+            echo ""
+
+            if [[ -n "$_output" ]]; then
+              gum style --padding "0 2" "$_output"
+            fi
+
+            echo ""
+
             if [[ "''${_exit}" -ne 0 ]]; then
               gum style --foreground ${errorColor} "✗ ${name} failed (exit code ''${_exit})"
               exit "''${_exit}"
