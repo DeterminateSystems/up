@@ -29,7 +29,6 @@ in
     aliases = mkOption {
       type = types.listOf types.str;
       default = [ ];
-      description = "Alternative names for this task.";
     };
     description = mkOption {
       type = types.nullOr types.str;
@@ -42,7 +41,6 @@ in
     confirm = mkOption {
       type = types.bool;
       default = false;
-      description = "Prompt for confirmation before running. Can be a bool or a custom message.";
     };
     environment = mkOption {
       type = types.either (types.attrsOf types.str) (types.listOf types.str);
@@ -51,12 +49,14 @@ in
     before = mkOption {
       type = types.listOf types.str;
       default = [ ];
-      description = "Tasks that this task must run before.";
     };
     after = mkOption {
       type = types.listOf types.str;
       default = [ ];
-      description = "Tasks that must complete before this task runs.";
+    };
+    status = mkOption {
+      type = types.nullOr types.str;
+      default = null;
     };
 
     # colors
@@ -122,6 +122,14 @@ in
             (lib.concatStringsSep "\n" (
               lib.mapAttrsToList (k: v: ''export ${k}="${escapeForDoubleQuotes v}"'') dynamicEnv
             ))
+            (lib.optionalString (config.status != null) ''
+              _status_exit=0
+              (${lib.trim config.status}) || _status_exit=$?
+              if [[ $_status_exit -ne 0 ]]; then
+                gum style --foreground ${config.mutedColor} "⊘ ${taskName} skipped (status check failed)"
+                exit 0
+              fi
+            '')
             (if config.requireArgs then "${config.command} \"$@\"" else config.command)
           ]
         );
