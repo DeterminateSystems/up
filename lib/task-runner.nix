@@ -207,7 +207,7 @@ let
                   depName: builtins.any (e: e.from == depName && e.to == name) edges
                 ) orderedNames;
                 depSteps = lib.concatStringsSep "\n" (
-                  map (dep: runStep dep resolvedTasks.${dep}.bin "" task.raw) deps
+                  map (dep: runStep dep resolvedTasks.${dep}.bin "" resolvedTasks.${dep}.raw) deps
                 );
                 mainArm = ''
                   ${name})
@@ -237,7 +237,10 @@ let
 
           runAllSteps =
             let
-              skipped = builtins.filter ({ task, ... }: task.requireArgs) orderedTasks;
+              rawTasks = builtins.filter ({ task, ... }: task.raw) orderedTasks;
+              runnableTasks = builtins.filter ({ task, ... }: !task.raw) orderedTasks;
+              skipped = builtins.filter ({ task, ... }: task.requireArgs) runnableTasks;
+
               steps = lib.concatStringsSep "\n" (
                 map (
                   { name, task }:
@@ -253,7 +256,7 @@ let
                     ''
                   else
                     runStep name task.bin "" task.raw
-                ) orderedTasks
+                ) runnableTasks
               );
             in
             lib.concatStringsSep "\n" (
@@ -266,6 +269,13 @@ let
                     map (
                       { name, ... }: ''gum style --foreground ${accentColor} "  ${config.name} ${name} <args>"''
                     ) skipped
+                  )}
+                '')
+                (lib.optionalString (rawTasks != [ ]) ''
+                  echo ""
+                  gum style --foreground ${mutedColor} "Some tasks were excluded because they produce raw output. Run them individually instead:"
+                  ${lib.concatStringsSep "\n" (
+                    map ({ name, ... }: ''gum style --foreground ${accentColor} "  ${config.name} ${name}"'') rawTasks
                   )}
                 '')
               ]

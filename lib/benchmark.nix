@@ -6,12 +6,7 @@
 
 {
   # task
-  description ? null,
   packages ? [ ],
-  before ? [ ],
-  after ? [ ],
-  aliases ? [ ],
-  environment ? { },
 
   # hyperfine
   commands, # string, or list of strings, or list of { command, name? }
@@ -74,15 +69,6 @@ let
 in
 {
   raw = true;
-
-  inherit
-    before
-    after
-    aliases
-    environment
-    status
-    description
-    ;
 
   packages = packages ++ [ package ];
 

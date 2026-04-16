@@ -27,4 +27,8 @@ in
       taskModule
       ;
   };
+
+  mkWatch = import ./watch.nix { inherit lib pkgs; };
+
+  mkTool = import ./tool.nix { inherit lib pkgs; };
 }

@@ -16,7 +16,7 @@ in
       default = null;
     };
     command = mkOption {
-      type = types.str;
+      type = types.either types.str types.package;
     };
     requireArgs = mkOption {
       type = types.bool;
@@ -109,6 +109,9 @@ in
         staticEnv = lib.filterAttrs (_: isStatic) envAttrs;
         dynamicEnv = lib.filterAttrs (_: v: !isStatic v) envAttrs;
         escapeForDoubleQuotes = v: lib.replaceStrings [ "\\" "\"" "`" "!" ] [ "\\\\" "\\\"" "\\`" "\\!" ] v;
+
+        resolvedCommand =
+          if builtins.isString config.command then config.command else lib.getExe config.command;
       in
       pkgs.writeShellApplication {
         name = "__up_task_${taskName}";
@@ -134,7 +137,7 @@ in
                 exit 0
               fi
             '')
-            (if config.requireArgs then "${config.command} \"$@\"" else config.command)
+            (if config.requireArgs then "${resolvedCommand} \"$@\"" else resolvedCommand)
           ]
         );
       };
