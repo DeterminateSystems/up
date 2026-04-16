@@ -193,13 +193,12 @@ let
                   depName: builtins.any (e: e.from == depName && e.to == name) edges
                 ) orderedNames;
                 depSteps = lib.concatStringsSep "\n" (map (dep: runStep dep resolvedTasks.${dep}.bin "") deps);
-                confirmMsg = "Run ${name}?";
                 mainArm = ''
                   ${name})
                     shift
                     ${depSteps}
-                    ${lib.optionalString (confirmMsg != null) ''
-                      if ! gum confirm "${confirmMsg}"; then
+                    ${lib.optionalString task.confirm ''
+                      if ! gum confirm "Run ${name}?"; then
                         gum style --foreground ${mutedColor} "⊘ ${name} cancelled"
                         exit 0
                       fi
@@ -226,28 +225,8 @@ let
               steps = lib.concatStringsSep "\n" (
                 map (
                   { name, task }:
-                  let
-                    confirmMsg = "Run ${name}?";
-                    confirmWrap = body: ''
-                      if gum confirm "${confirmMsg}"; then
-                        ${body}
-                      else
-                        gum style --foreground ${mutedColor} "⊘ ${name} cancelled"
-                      fi
-                    '';
-                  in
                   if task.requireArgs then
                     ''gum style --foreground ${mutedColor} "⊘ ${name} skipped (requires arguments)"''
-                  else if task.status or null != null then
-                    ''
-                      if ${task.status}; then
-                        gum style --foreground ${mutedColor} "⊘ ${name} skipped"
-                      else
-                        ${if confirmMsg != null then confirmWrap (runStep name task.bin "") else runStep name task.bin ""}
-                      fi
-                    ''
-                  else if confirmMsg != null then
-                    confirmWrap (runStep name task.bin "")
                   else
                     runStep name task.bin ""
                 ) orderedTasks

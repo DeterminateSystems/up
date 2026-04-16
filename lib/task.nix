@@ -58,11 +58,6 @@ in
       default = [ ];
       description = "Tasks that must complete before this task runs.";
     };
-    status = mkOption {
-      type = types.nullOr types.str;
-      default = null;
-      description = "Command to check if the task needs to run. Exit 0 means skip.";
-    };
 
     # colors
     errorColor = mkOption {
@@ -113,11 +108,17 @@ in
     {
       script = pkgs.writeShellApplication {
         name = "__up_task_${taskName}";
-        runtimeInputs = config.packages ++ lib.optional config.requireArgs pkgs.gum;
+        runtimeInputs = config.packages ++ lib.optional (config.confirm || config.requireArgs) pkgs.gum;
         runtimeEnv = staticEnv;
         inherit (config) excludeShellChecks;
         text = lib.concatStringsSep "\n" (
           lib.filter (s: s != "") [
+            (lib.optionalString config.confirm ''
+              if ! gum confirm "Run ${taskName}?"; then
+                gum style --foreground ${config.mutedColor} "⊘ ${taskName} cancelled"
+                exit 2
+              fi
+            '')
             (lib.optionalString config.requireArgs ''
               if [[ $# -eq 0 ]]; then
                 gum style --foreground ${config.errorColor} "✗ ${taskName}: arguments required"
