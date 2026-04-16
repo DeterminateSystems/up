@@ -88,6 +88,7 @@ in
   config =
     let
       taskName = if config.name != null then config.name else name;
+
       isStatic = v: !(lib.hasInfix "$" v);
       envAttrs =
         if builtins.isAttrs config.environment then

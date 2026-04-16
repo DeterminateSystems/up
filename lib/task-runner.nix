@@ -116,6 +116,9 @@ let
                   ];
                 }).config;
             in
+            assert lib.assertMsg (
+              builtins.match "[a-z][a-z0-9-]*" name != null
+            ) "mkTaskRunner: task name '${name}' must be a lowercase slug (letters, numbers, hyphens only)";
             assert lib.assertMsg (config.tasks != { }) "mkTaskRunner: '${config.name}' has no tasks";
             assert lib.assertMsg (
               !builtins.hasAttr "all" config.tasks
