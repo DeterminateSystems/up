@@ -179,6 +179,7 @@ let
             if [[ "''${_exit}" -eq 2 ]]; then
               :
             elif [[ "''${_exit}" -ne 0 ]]; then
+              gum style --foreground ${errorColor} "✗ ${name} failed (exit code ''${_exit})"
               exit "''${_exit}"
             else
               gum style --foreground ${successColor} "✓ ${name}"

@@ -80,33 +80,32 @@ in
     };
   };
 
-  config =
-    let
-      taskName = if config.name != null then config.name else name;
-
-      isStatic = v: !(lib.hasInfix "$" v);
-      envAttrs =
-        if builtins.isAttrs config.environment then
-          config.environment
-        else
-          builtins.listToAttrs (
-            map (
-              s:
-              let
-                parts = lib.splitString "=" s;
-              in
-              {
-                name = builtins.head parts;
-                value = lib.concatStringsSep "=" (builtins.tail parts);
-              }
-            ) config.environment
-          );
-      staticEnv = lib.filterAttrs (_: isStatic) envAttrs;
-      dynamicEnv = lib.filterAttrs (_: v: !isStatic v) envAttrs;
-      escapeForDoubleQuotes = v: lib.replaceStrings [ "\\" "\"" "`" "!" ] [ "\\\\" "\\\"" "\\`" "\\!" ] v;
-    in
-    {
-      script = pkgs.writeShellApplication {
+  config = {
+    script =
+      let
+        taskName = if config.name != null then config.name else name;
+        isStatic = v: !(lib.hasInfix "$" v);
+        envAttrs =
+          if builtins.isAttrs config.environment then
+            config.environment
+          else
+            builtins.listToAttrs (
+              map (
+                s:
+                let
+                  parts = lib.splitString "=" s;
+                in
+                {
+                  name = builtins.head parts;
+                  value = lib.concatStringsSep "=" (builtins.tail parts);
+                }
+              ) config.environment
+            );
+        staticEnv = lib.filterAttrs (_: isStatic) envAttrs;
+        dynamicEnv = lib.filterAttrs (_: v: !isStatic v) envAttrs;
+        escapeForDoubleQuotes = v: lib.replaceStrings [ "\\" "\"" "`" "!" ] [ "\\\\" "\\\"" "\\`" "\\!" ] v;
+      in
+      pkgs.writeShellApplication {
         name = "__up_task_${taskName}";
         runtimeInputs = config.packages ++ lib.optional (config.confirm || config.requireArgs) pkgs.gum;
         runtimeEnv = staticEnv;
@@ -135,6 +134,6 @@ in
         );
       };
 
-      bin = lib.getExe config.script;
-    };
+    bin = lib.getExe config.script;
+  };
 }
