@@ -116,9 +116,6 @@ let
                   ];
                 }).config;
             in
-            assert lib.assertMsg (
-              builtins.match "[a-z][a-z0-9-]*" name != null
-            ) "mkTaskRunner: task name '${name}' must be a lowercase slug (letters, numbers, hyphens only)";
             assert lib.assertMsg (config.tasks != { }) "mkTaskRunner: '${config.name}' has no tasks";
             assert lib.assertMsg (
               !builtins.hasAttr "all" config.tasks
@@ -196,10 +193,17 @@ let
                   depName: builtins.any (e: e.from == depName && e.to == name) edges
                 ) orderedNames;
                 depSteps = lib.concatStringsSep "\n" (map (dep: runStep dep resolvedTasks.${dep}.bin "") deps);
+                confirmMsg = "Run ${name}?";
                 mainArm = ''
                   ${name})
                     shift
                     ${depSteps}
+                    ${lib.optionalString (confirmMsg != null) ''
+                      if ! gum confirm "${confirmMsg}"; then
+                        gum style --foreground ${mutedColor} "⊘ ${name} cancelled"
+                        exit 0
+                      fi
+                    ''}
                     ${runStep name task.bin (if task.requireArgs then ''"$@"'' else "")}
                     ;;
                 '';
@@ -222,6 +226,16 @@ let
               steps = lib.concatStringsSep "\n" (
                 map (
                   { name, task }:
+                  let
+                    confirmMsg = "Run ${name}?";
+                    confirmWrap = body: ''
+                      if gum confirm "${confirmMsg}"; then
+                        ${body}
+                      else
+                        gum style --foreground ${mutedColor} "⊘ ${name} cancelled"
+                      fi
+                    '';
+                  in
                   if task.requireArgs then
                     ''gum style --foreground ${mutedColor} "⊘ ${name} skipped (requires arguments)"''
                   else if task.status or null != null then
@@ -229,9 +243,11 @@ let
                       if ${task.status}; then
                         gum style --foreground ${mutedColor} "⊘ ${name} skipped"
                       else
-                        ${runStep name task.bin ""}
+                        ${if confirmMsg != null then confirmWrap (runStep name task.bin "") else runStep name task.bin ""}
                       fi
                     ''
+                  else if confirmMsg != null then
+                    confirmWrap (runStep name task.bin "")
                   else
                     runStep name task.bin ""
                 ) orderedTasks
