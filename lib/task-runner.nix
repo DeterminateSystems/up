@@ -227,6 +227,14 @@ let
                   { name, task }:
                   if task.requireArgs then
                     ''gum style --foreground ${mutedColor} "⊘ ${name} skipped (requires arguments)"''
+                  else if task.confirm then
+                    ''
+                      if gum confirm "Run ${name}?"; then
+                        ${runStep name task.bin ""}
+                      else
+                        gum style --foreground ${mutedColor} "⊘ ${name} cancelled"
+                      fi
+                    ''
                   else
                     runStep name task.bin ""
                 ) orderedTasks

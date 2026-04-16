@@ -113,12 +113,6 @@ in
         inherit (config) excludeShellChecks;
         text = lib.concatStringsSep "\n" (
           lib.filter (s: s != "") [
-            (lib.optionalString config.confirm ''
-              if ! gum confirm "Run ${taskName}?"; then
-                gum style --foreground ${config.mutedColor} "⊘ ${taskName} cancelled"
-                exit 2
-              fi
-            '')
             (lib.optionalString config.requireArgs ''
               if [[ $# -eq 0 ]]; then
                 gum style --foreground ${config.errorColor} "✗ ${taskName}: arguments required"
