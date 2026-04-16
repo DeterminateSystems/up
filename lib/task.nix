@@ -26,6 +26,11 @@ in
       type = types.listOf types.package;
       default = [ ];
     };
+    aliases = mkOption {
+      type = types.listOf types.str;
+      default = [ ];
+      description = "Alternative names for this task.";
+    };
     description = mkOption {
       type = types.nullOr types.str;
       default = null;

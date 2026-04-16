@@ -11,21 +11,6 @@ let
 
   escapeSingleQuote = s: lib.replaceStrings [ "'" ] [ "'\"'\"'" ] s;
 
-  isTask = v: builtins.isAttrs v && v ? __isTask && v.__isTask;
-
-  resolveTask =
-    name: v:
-    if isTask v then
-      v
-    else
-      (lib.evalModules {
-        modules = [
-          taskModule
-          { config._module.args.name = name; }
-          v
-        ];
-      }).config;
-
   # Topological sort to return an ordered list of task names
   topoSort =
     tasks:
@@ -120,19 +105,16 @@ let
             let
               resolveTask =
                 name: v:
-                if isTask v then
-                  v
-                else
-                  (lib.evalModules {
-                    modules = [
-                      taskModule
-                      { config._module.args.name = name; }
-                      {
-                        inherit (config) errorColor mutedColor;
-                      }
-                      v
-                    ];
-                  }).config;
+                (lib.evalModules {
+                  modules = [
+                    taskModule
+                    { config._module.args.name = name; }
+                    {
+                      inherit (config) errorColor mutedColor;
+                    }
+                    v
+                  ];
+                }).config;
             in
             assert lib.assertMsg (config.tasks != { }) "mkTaskRunner: '${config.name}' has no tasks";
             assert lib.assertMsg (
@@ -171,17 +153,20 @@ let
               muted = "\\e[38;5;${mutedColor}m";
               reset = "\\e[0m";
               mkRow =
-                name: desc:
+                name: desc: aliases:
                 let
                   spaces = lib.concatStringsSep "" (lib.genList (_: " ") (maxLen - lib.stringLength name + 2));
+                  aliasStr = lib.optionalString (aliases != [ ]) " [${lib.concatStringsSep ", " aliases}]";
                 in
-                "  ${accent}${name}${reset}${spaces}  ${muted}${escapeSingleQuote desc}${reset}";
+                "  ${accent}${name}${reset}${spaces}  ${muted}${escapeSingleQuote desc}${aliasStr}${reset}";
               rows =
                 map (
                   { name, task }:
-                  mkRow name (if task.description != null then escapeSingleQuote task.description else "")
+                  mkRow name (if task.description != null then escapeSingleQuote task.description else "") (
+                    task.aliases or [ ]
+                  )
                 ) orderedTasks
-                ++ [ (mkRow "all" "Run all tasks in dependency order") ];
+                ++ [ (mkRow "all" "Run all tasks in dependency order" [ ]) ];
             in
             ''echo -e "${lib.concatStringsSep "\\n" rows}"'';
 
@@ -196,7 +181,7 @@ let
             elif [[ "''${_exit}" -ne 0 ]]; then
               exit "''${_exit}"
             else
-              gum style --foreground 2 "✓ ${name}"
+              gum style --foreground ${successColor} "✓ ${name}"
             fi
           '';
 
@@ -208,14 +193,23 @@ let
                   depName: builtins.any (e: e.from == depName && e.to == name) edges
                 ) orderedNames;
                 depSteps = lib.concatStringsSep "\n" (map (dep: runStep dep resolvedTasks.${dep}.bin "") deps);
+                mainArm = ''
+                  ${name})
+                    shift
+                    ${depSteps}
+                    ${runStep name task.bin (if task.requireArgs then ''"$@"'' else "")}
+                    ;;
+                '';
+                aliasArms = lib.concatStringsSep "\n" (
+                  map (alias: ''
+                    ${alias})
+                      shift
+                      exec "$0" ${name} "$@"
+                      ;;
+                  '') task.aliases
+                );
               in
-              ''
-                ${name})
-                  shift
-                  ${depSteps}
-                  ${runStep name task.bin (if task.requireArgs then ''"$@"'' else "")}
-                  ;;
-              ''
+              mainArm + aliasArms
             ) orderedTasks
           );
 
