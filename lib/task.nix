@@ -107,13 +107,12 @@ in
     {
       script = pkgs.writeShellApplication {
         name = taskName;
-        runtimeInputs =
-          config.packages ++ lib.optional (config.confirm != false || config.requireArgs) pkgs.gum;
+        runtimeInputs = config.packages ++ lib.optional (config.confirm || config.requireArgs) pkgs.gum;
         runtimeEnv = staticEnv;
         inherit (config) excludeShellChecks;
         text = lib.concatStringsSep "\n" (
           lib.filter (s: s != "") [
-            (lib.optionalString (config.confirm != false) ''
+            (lib.optionalString config.confirm ''
               if ! gum confirm ${
                 if builtins.isString config.confirm then ''"${config.confirm}"'' else ''"Run ${taskName}?"''
               }; then

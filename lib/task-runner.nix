@@ -128,8 +128,7 @@ let
                       taskModule
                       { config._module.args.name = name; }
                       {
-                        errorColor = config.errorColor;
-                        mutedColor = config.mutedColor;
+                        inherit (config) errorColor mutedColor;
                       }
                       v
                     ];
