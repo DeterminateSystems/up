@@ -176,9 +176,7 @@ let
             ${bin} ${args} 2>&1 | sed 's/^/  /'
             _exit=''${PIPESTATUS[0]}
             set -e
-            if [[ "''${_exit}" -eq 2 ]]; then
-              :
-            elif [[ "''${_exit}" -ne 0 ]]; then
+            if [[ "''${_exit}" -ne 0 ]]; then
               gum style --foreground ${errorColor} "✗ ${name} failed (exit code ''${_exit})"
               exit "''${_exit}"
             else
