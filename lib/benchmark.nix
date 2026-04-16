@@ -17,6 +17,8 @@
   commands, # string, or list of strings, or list of { command, name? }
   package ? pkgs.hyperfine,
   runs ? null,
+  minRuns ? null,
+  maxRuns ? null,
   warmup ? null,
   setup ? null,
   prepare ? null,
@@ -30,6 +32,10 @@
   reference ? null,
   referenceName ? null,
 }:
+
+assert lib.assertMsg (
+  runs == null || (minRuns == null && maxRuns == null)
+) "mkBenchmarkTask: 'runs' and 'minRuns'/'maxRuns' are mutually exclusive";
 
 let
   escapeCmd = cmd: "'${lib.replaceStrings [ "'" ] [ "'\"'\"'" ] (lib.trim cmd)}'";
@@ -86,6 +92,14 @@ in
       ++ lib.optionals (runs != null) [
         "--runs"
         (toString runs)
+      ]
+      ++ lib.optionals (minRuns != null) [
+        "--min-runs"
+        (toString minRuns)
+      ]
+      ++ lib.optionals (maxRuns != null) [
+        "--max-runs"
+        (toString maxRuns)
       ]
       ++ lib.optionals (warmup != null) [
         "--warmup"
