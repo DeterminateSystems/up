@@ -60,13 +60,13 @@ in
     };
 
     # colors
-    errorColor = mkOption {
-      type = types.str;
+    errorColor = lib.mkOption {
+      type = lib.types.str;
       default = "1";
     };
-    mutedColor = mkOption {
-      type = types.str;
-      default = "240";
+    mutedColor = lib.mkOption {
+      type = lib.types.str;
+      default = "248";
     };
 
     # generated
