@@ -160,9 +160,9 @@ let
               rows =
                 map (
                   { name, task }:
-                  mkRow name (if task.description != null then escapeSingleQuote task.description else "") (
-                    task.aliases or [ ]
-                  )
+                  mkRow name (
+                    if task.description != null then escapeSingleQuote task.description else ""
+                  ) task.aliases
                 ) orderedTasks
                 ++ [ (mkRow "all" "Run all tasks in dependency order" [ ]) ];
             in
@@ -314,7 +314,7 @@ let
           command = commandText;
           tasks = lib.mapAttrs (_: task: {
             inherit (task) description;
-            command = builtins.readFile task.bin;
+            command = lib.getExe task.script;
             before = task.before or [ ];
             after = task.after or [ ];
           }) resolvedTasks;

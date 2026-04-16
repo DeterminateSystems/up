@@ -9,18 +9,6 @@ args:
 let
   inherit (lib) mkOption types;
 
-  toEnvList = env: if builtins.isList env then env else lib.mapAttrsToList (k: v: "${k}=${v}") env;
-  toExport =
-    e:
-    let
-      key = builtins.head (builtins.split "=" e);
-      val = lib.removePrefix "${key}=" e;
-    in
-    if lib.hasInfix "$(" val then
-      ''${key}="${val}"'' + "\n" + "export ${key}"
-    else
-      ''export ${key}="${val}"'';
-
   dependencyModule = {
     options.condition = mkOption {
       type = types.enum [
@@ -104,6 +92,10 @@ let
           type = types.nullOr types.str;
           default = null;
         };
+        environment = mkOption {
+          type = types.either (types.attrsOf types.str) (types.listOf types.str);
+          default = { };
+        };
         packages = mkOption {
           type = types.listOf types.package;
           default = [ ];
@@ -111,14 +103,6 @@ let
         description = mkOption {
           type = types.nullOr types.str;
           default = null;
-        };
-        staticEnvVars = mkOption {
-          type = types.either (types.attrsOf types.str) (types.listOf types.str);
-          default = { };
-        };
-        runtimeEnvVars = mkOption {
-          type = types.either (types.attrsOf types.str) (types.listOf types.str);
-          default = { };
         };
         depends_on = mkOption {
           type = types.attrsOf (types.submodule dependencyModule);
@@ -159,6 +143,10 @@ let
           type = types.package;
           default = pkgs.process-compose;
         };
+        environment = mkOption {
+          type = types.either (types.attrsOf types.str) (types.listOf types.str);
+          default = { };
+        };
         log_level = mkOption {
           type = types.enum [
             "info"
@@ -179,14 +167,6 @@ let
           type = types.listOf types.package;
           default = [ ];
         };
-        staticEnvVars = mkOption {
-          type = types.either (types.attrsOf types.str) (types.listOf types.str);
-          default = { };
-        };
-        runtimeEnvVars = mkOption {
-          type = types.either (types.attrsOf types.str) (types.listOf types.str);
-          default = { };
-        };
         excludeShellChecks = mkOption {
           type = types.listOf types.str;
           default = [ ];
@@ -206,34 +186,66 @@ let
       config.script =
         let
           stripNulls = lib.filterAttrs (_: v: v != null);
-          toEnvList = env: if builtins.isList env then env else lib.mapAttrsToList (k: v: "${k}=${v}") env;
+
+          toEnvAttrs =
+            env:
+            if builtins.isAttrs env then
+              env
+            else
+              builtins.listToAttrs (
+                map (
+                  s:
+                  let
+                    key = builtins.head (builtins.split "=" s);
+                  in
+                  {
+                    name = key;
+                    value = lib.removePrefix "${key}=" s;
+                  }
+                ) env
+              );
+
+          mkScript =
+            {
+              name,
+              command,
+              environment ? { },
+              packages ? [ ],
+              excludeShellChecks ? [ ],
+            }:
+            let
+              envAttrs = toEnvAttrs environment;
+              mkExport = k: v: if lib.hasInfix "$" v then ''export ${k}="${v}"'' else "export ${k}='${v}'";
+              exports = lib.concatStringsSep "\n" (lib.mapAttrsToList mkExport envAttrs);
+            in
+            pkgs.writeShellApplication {
+              inherit name excludeShellChecks;
+              runtimeInputs = packages;
+              text = lib.concatStringsSep "\n\n" (
+                lib.filter (s: s != "") [
+                  exports
+                  command
+                ]
+              );
+            };
+
           serializeProcess =
             name: proc:
-            let
-              environment = toEnvList proc.staticEnvVars;
-            in
             stripNulls {
               inherit (proc) working_dir;
 
               command =
                 let
-                  envList = toEnvList proc.runtimeEnvVars;
-                  exports = lib.concatStringsSep "\n" (map toExport envList);
-                  script = pkgs.writeShellApplication {
+                  script = mkScript {
                     name = "run-${name}";
+                    inherit (proc) command environment;
                     excludeShellChecks = lib.unique (config.excludeShellChecks ++ proc.excludeShellChecks);
-                    text = lib.concatStringsSep "\n\n" (
-                      lib.filter (s: s != "") [
-                        (lib.optionalString (envList != [ ]) exports)
-                        proc.command
-                      ]
-                    );
                   };
                 in
                 "${script}/bin/run-${name}";
 
               depends_on = if proc.depends_on == { } then null else proc.depends_on;
-              environment = if environment == [ ] then null else environment;
+              environment = null;
               liveness_probe =
                 if proc.liveness_probe == null then
                   null
@@ -281,19 +293,12 @@ let
                   };
             };
 
-          runtimeExports = lib.concatStringsSep "\n" (map toExport (toEnvList config.runtimeEnvVars));
-
           configFile =
             pkgs.runCommand config.configFileName
               {
                 json = builtins.toJSON (stripNulls {
                   inherit (config) log_level;
                   log_location = "/tmp/pc-debug.log";
-                  environment =
-                    let
-                      envList = toEnvList config.staticEnvVars;
-                    in
-                    if envList == [ ] then null else envList;
                   processes = lib.mapAttrs serializeProcess config.processes;
                 });
                 passAsFile = [ "json" ];
@@ -309,26 +314,17 @@ let
             ++ lib.flatten (lib.mapAttrsToList (_: proc: proc.packages) config.processes)
           );
 
-          commandText =
-            let
-              processComposeCommand = lib.concatStringsSep " " [
-                "process-compose"
-                "up"
-                "--config"
-                configFile
-              ];
+          commandText = lib.concatStringsSep " " [
+            "process-compose"
+            "up"
+            "--config"
+            configFile
+          ];
 
-              parts = lib.filter (s: s != "") [
-                (lib.optionalString (toEnvList config.runtimeEnvVars != [ ]) (lib.removeSuffix "\n" runtimeExports))
-                processComposeCommand
-              ];
-            in
-            lib.concatStringsSep "\n\n" parts;
-
-          script = pkgs.writeShellApplication {
-            inherit (config) name excludeShellChecks;
-            runtimeInputs = allPackages;
-            text = commandText;
+          script = mkScript {
+            inherit (config) name excludeShellChecks environment;
+            packages = allPackages;
+            command = commandText;
           };
         in
         script
