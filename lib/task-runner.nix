@@ -109,11 +109,9 @@ let
                   modules = [
                     taskModule
                     { config._module.args.name = name; }
-                    {
-                      inherit (config) errorColor mutedColor;
-                    }
-                    v
-                  ];
+                    { inherit (config) errorColor mutedColor; }
+                  ]
+                  ++ (if builtins.isList v then v else [ v ]);
                 }).config;
             in
             assert lib.assertMsg (config.tasks != { }) "mkTaskRunner: '${config.name}' has no tasks";
@@ -170,22 +168,29 @@ let
             in
             ''echo -e "${lib.concatStringsSep "\\n" rows}"'';
 
-          runStep = name: bin: args: ''
+          runStep = name: bin: args: raw: ''
             gum style --foreground ${accentColor} '▶ ${name}'
+            echo ""
             set +e
-
-            _output=$(${bin} ${args} 2>&1)
-            _exit=$?
+            ${
+              if raw then
+                ''
+                  ${bin} ${args}
+                  _exit=$?
+                ''
+              else
+                ''
+                  _output=$(${bin} ${args} 2>&1)
+                  _exit=$?
+                ''
+            }
             set -e
-
+            ${lib.optionalString (!raw) ''
+              if [[ -n "$_output" ]]; then
+                echo "$_output" | awk '/^[[:space:]]*$/{blank++; next} {for(i=0;i<blank;i++) print ""; blank=0; print}' | gum style --margin "0 0 0 2"
+              fi
+            ''}
             echo ""
-
-            if [[ -n "$_output" ]]; then
-              gum style --padding "0 2" "$_output"
-            fi
-
-            echo ""
-
             if [[ "''${_exit}" -ne 0 ]]; then
               gum style --foreground ${errorColor} "✗ ${name} failed (exit code ''${_exit})"
               exit "''${_exit}"
@@ -201,7 +206,9 @@ let
                 deps = builtins.filter (
                   depName: builtins.any (e: e.from == depName && e.to == name) edges
                 ) orderedNames;
-                depSteps = lib.concatStringsSep "\n" (map (dep: runStep dep resolvedTasks.${dep}.bin "") deps);
+                depSteps = lib.concatStringsSep "\n" (
+                  map (dep: runStep dep resolvedTasks.${dep}.bin "" task.raw) deps
+                );
                 mainArm = ''
                   ${name})
                     shift
@@ -212,7 +219,7 @@ let
                         exit 0
                       fi
                     ''}
-                    ${runStep name task.bin (if task.requireArgs then ''"$@"'' else "")}
+                    ${runStep name task.bin (if task.requireArgs then ''"$@"'' else "") task.raw}
                     ;;
                 '';
                 aliasArms = lib.concatStringsSep "\n" (
@@ -239,13 +246,13 @@ let
                   else if task.confirm then
                     ''
                       if gum confirm "Run ${name}?"; then
-                        ${runStep name task.bin ""}
+                        ${runStep name task.bin "" task.raw}
                       else
                         gum style --foreground ${mutedColor} "⊘ ${name} cancelled"
                       fi
                     ''
                   else
-                    runStep name task.bin ""
+                    runStep name task.bin "" task.raw
                 ) orderedTasks
               );
             in

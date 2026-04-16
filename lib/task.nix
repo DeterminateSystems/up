@@ -26,6 +26,11 @@ in
       type = types.listOf types.package;
       default = [ ];
     };
+    raw = mkOption {
+      type = types.bool;
+      default = false;
+      description = "Stream output directly without capturing (preserves colors and formatting).";
+    };
     aliases = mkOption {
       type = types.listOf types.str;
       default = [ ];

@@ -4,7 +4,7 @@
   taskModule,
 }:
 
-module:
+args:
 
 let
   inherit (lib) mkOption types;
@@ -356,6 +356,6 @@ in
 (lib.evalModules {
   modules = [
     processesModule
-    module
+    args
   ];
 }).config.script
