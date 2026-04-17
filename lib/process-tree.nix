@@ -92,6 +92,33 @@ let
           type = types.nullOr types.str;
           default = null;
         };
+        watch = lib.mkOption {
+          type = lib.types.nullOr (
+            lib.types.submodule {
+              options = {
+                paths = lib.mkOption {
+                  type = lib.types.listOf (lib.types.either lib.types.str lib.types.path);
+                };
+                debounce = lib.mkOption {
+                  type = lib.types.int;
+                  default = 500;
+                };
+                ignore = lib.mkOption {
+                  type = lib.types.listOf lib.types.str;
+                };
+                action = lib.mkOption {
+                  type = lib.types.enum [
+                    "restart"
+                    "stop"
+                    "start"
+                  ];
+                  default = "restart";
+                };
+              };
+            }
+          );
+          default = null;
+        };
         environment = mkOption {
           type = types.either (types.attrsOf types.str) (types.listOf types.str);
           default = { };
@@ -293,13 +320,52 @@ let
                   };
             };
 
+          mkWatcher =
+            name: proc:
+            let
+              w = proc.watch;
+            in
+            {
+              packages = [
+                pkgs.watchexec
+                config.package
+              ];
+              command = ''
+                exec watchexec \
+                  ${lib.concatMapStringsSep " " (p: "--watch '${toString p}'") w.paths} \
+                  ${lib.concatMapStringsSep " " (i: "--ignore '${i}'") w.ignore} \
+                  --debounce ${toString w.debounce}ms \
+                  --postpone \
+                  --on-busy-update queue \
+                  -- \
+                  process-compose process ${w.action} ${name}
+              '';
+              depends_on.${name}.condition = "process_started";
+
+              # defaults the processModule would provide — watchers bypass it
+              environment = { };
+              excludeShellChecks = [ ];
+              working_dir = null;
+              readiness_probe = null;
+              liveness_probe = null;
+              shutdown = null;
+              watch = null;
+              description = null;
+            };
+
+          watcherProcesses = lib.mapAttrs' (
+            name: proc: lib.nameValuePair "${name}-watcher" (mkWatcher name proc)
+          ) (lib.filterAttrs (_: p: p.watch != null) config.processes);
+
+          allProcesses = config.processes // watcherProcesses;
+
           configFile =
             pkgs.runCommand config.configFileName
               {
                 json = builtins.toJSON (stripNulls {
                   inherit (config) log_level;
                   log_location = "/tmp/pc-debug.log";
-                  processes = lib.mapAttrs serializeProcess config.processes;
+                  processes = lib.mapAttrs serializeProcess allProcesses;
                 });
                 passAsFile = [ "json" ];
                 nativeBuildInputs = [ pkgs.yq-go ];
@@ -311,7 +377,7 @@ let
           allPackages = lib.unique (
             [ config.package ]
             ++ config.packages
-            ++ lib.flatten (lib.mapAttrsToList (_: proc: proc.packages) config.processes)
+            ++ lib.flatten (lib.mapAttrsToList (_: proc: proc.packages) allProcesses)
           );
 
           commandText = lib.concatStringsSep " " [
