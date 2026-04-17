@@ -400,7 +400,7 @@ Here's an example:
 let
   procs = pkgs.lib.mkTool {
     name = "procs";
-    package = pkgs.bottom;
+    tool = pkgs.bottom;
     args = [
       "--expanded"
       "--default_widget_type=proc"
