@@ -1,7 +1,48 @@
 { lib, pkgs }:
 
 let
-  taskModule = import ./task.nix { inherit lib pkgs; };
+  mkScript =
+    {
+      name,
+      command,
+      environment ? { },
+      packages ? [ ],
+      excludeShellChecks ? [ ],
+    }:
+    let
+      toEnvAttrs =
+        env:
+        if builtins.isAttrs env then
+          env
+        else
+          builtins.listToAttrs (
+            map (
+              s:
+              let
+                key = builtins.head (builtins.split "=" s);
+              in
+              {
+                name = key;
+                value = lib.removePrefix "${key}=" s;
+              }
+            ) env
+          );
+
+      envAttrs = toEnvAttrs environment;
+      exports = lib.concatStringsSep "\n" (lib.mapAttrsToList (k: v: ''export ${k}="${v}"'') envAttrs);
+    in
+    pkgs.writeShellApplication {
+      inherit name excludeShellChecks;
+      runtimeInputs = packages;
+      text = lib.concatStringsSep "\n" (
+        lib.filter (s: s != "") [
+          exports
+          command
+        ]
+      );
+    };
+
+  taskModule = import ./task.nix { inherit lib mkScript pkgs; };
 in
 {
   mkBenchmarkTask = import ./benchmark.nix {
@@ -15,6 +56,7 @@ in
   mkTaskRunner = import ./task-runner.nix {
     inherit
       lib
+      mkScript
       pkgs
       taskModule
       ;
@@ -23,12 +65,13 @@ in
   mkProcessTree = import ./process-tree.nix {
     inherit
       lib
+      mkScript
       pkgs
       taskModule
       ;
   };
 
-  mkWatch = import ./watch.nix { inherit lib pkgs; };
+  mkWatch = import ./watch.nix { inherit lib mkScript pkgs; };
 
-  mkTool = import ./tool.nix { inherit lib pkgs; };
+  mkTool = import ./tool.nix { inherit lib mkScript pkgs; };
 }

@@ -1,5 +1,6 @@
 {
   lib,
+  mkScript,
   pkgs,
   taskModule,
 }:
@@ -213,48 +214,6 @@ let
       config.script =
         let
           stripNulls = lib.filterAttrs (_: v: v != null);
-
-          toEnvAttrs =
-            env:
-            if builtins.isAttrs env then
-              env
-            else
-              builtins.listToAttrs (
-                map (
-                  s:
-                  let
-                    key = builtins.head (builtins.split "=" s);
-                  in
-                  {
-                    name = key;
-                    value = lib.removePrefix "${key}=" s;
-                  }
-                ) env
-              );
-
-          mkScript =
-            {
-              name,
-              command,
-              environment ? { },
-              packages ? [ ],
-              excludeShellChecks ? [ ],
-            }:
-            let
-              envAttrs = toEnvAttrs environment;
-              mkExport = k: v: ''export ${k}="${v}"'';
-              exports = lib.concatStringsSep "\n" (lib.mapAttrsToList mkExport envAttrs);
-            in
-            pkgs.writeShellApplication {
-              inherit name excludeShellChecks;
-              runtimeInputs = packages;
-              text = lib.concatStringsSep "\n\n" (
-                lib.filter (s: s != "") [
-                  exports
-                  command
-                ]
-              );
-            };
 
           serializeProcess =
             name: proc:

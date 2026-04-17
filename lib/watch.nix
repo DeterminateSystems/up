@@ -1,4 +1,8 @@
-{ lib, pkgs }:
+{
+  lib,
+  mkScript,
+  pkgs,
+}:
 
 {
   command,
@@ -45,10 +49,10 @@ in
 {
   inherit description;
   raw = true;
-  command = pkgs.writeShellApplication {
+  command = mkScript {
     name = "watch";
-    runtimeInputs = allPackages;
-    runtimeEnv = env;
-    text = watchexecCmd;
+    packages = allPackages;
+    environment = env;
+    command = watchexecCmd;
   };
 }

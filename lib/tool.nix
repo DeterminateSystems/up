@@ -1,4 +1,8 @@
-{ lib, pkgs }:
+{
+  lib,
+  mkScript,
+  pkgs,
+}:
 
 {
   name,
@@ -15,9 +19,9 @@ assert lib.assertMsg (
 let
   allPackages = lib.optional (package != null) package ++ packages;
 in
-pkgs.writeShellApplication {
+mkScript {
   inherit name;
-  runtimeInputs = allPackages;
-  runtimeEnv = env;
-  text = lib.concatStringsSep " " ([ (lib.getExe (builtins.head allPackages)) ] ++ args);
+  packages = allPackages;
+  environment = env;
+  command = lib.concatStringsSep " " ([ (lib.getExe (builtins.head allPackages)) ] ++ args);
 }

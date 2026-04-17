@@ -1,4 +1,8 @@
-{ lib, pkgs }:
+{
+  lib,
+  mkScript,
+  pkgs,
+}:
 
 {
   config,
@@ -113,12 +117,12 @@ in
         resolvedCommand =
           if builtins.isString config.command then config.command else lib.getExe config.command;
       in
-      pkgs.writeShellApplication {
+      mkScript {
         name = "__up_task_${taskName}";
-        runtimeInputs = config.packages ++ lib.optional (config.confirm || config.requireArgs) pkgs.gum;
-        runtimeEnv = staticEnv;
+        packages = config.packages ++ lib.optional (config.confirm || config.requireArgs) pkgs.gum;
+        environment = staticEnv;
         inherit (config) excludeShellChecks;
-        text = lib.concatStringsSep "\n" (
+        command = lib.concatStringsSep "\n" (
           lib.filter (s: s != "") [
             (lib.optionalString config.requireArgs ''
               if [[ $# -eq 0 ]]; then

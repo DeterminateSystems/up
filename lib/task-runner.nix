@@ -1,5 +1,6 @@
 {
   lib,
+  mkScript,
   pkgs,
   taskModule,
 }:
@@ -305,10 +306,11 @@ let
             esac
           '';
         in
-        pkgs.writeShellApplication {
-          inherit (config) name;
-          runtimeInputs = lib.unique (config.packages ++ [ gum ]);
-          text = commandText;
+
+        mkScript {
+          inherit (config) name environment;
+          packages = lib.unique (config.packages ++ [ gum ]);
+          command = commandText;
         }
         // {
           command = commandText;
