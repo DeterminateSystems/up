@@ -22,23 +22,27 @@ assert lib.assertMsg (paths != [ ]) "mkWatch: 'paths' must not be empty";
 let
   allPackages = [ package ] ++ packages;
 
-  watchexecCmd = lib.concatStringsSep " " (
+  watchexecPrefix = lib.escapeShellArgs (
     [ (lib.getExe package) ]
-    ++ map (p: "--watch '${p}'") paths
+    ++ lib.concatMap (p: [
+      "--watch"
+      p
+    ]) paths
     ++ lib.optionals (extensions != [ ]) [
       "--exts"
       (lib.concatStringsSep "," extensions)
     ]
-    ++ map (p: "--ignore '${p}'") ignore
+    ++ lib.concatMap (p: [
+      "--ignore"
+      p
+    ]) ignore
     ++ lib.optionals (debounce != null) [
       "--debounce"
       (toString debounce)
     ]
-    ++ [
-      "--"
-      command
-    ]
+    ++ [ "--" ]
   );
+  watchexecCmd = "${watchexecPrefix} ${command}";
 in
 {
   inherit description;

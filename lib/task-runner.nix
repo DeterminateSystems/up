@@ -304,6 +304,7 @@ let
               ${caseArms}
               *)
                 gum style --foreground ${errorColor} "Unknown task: $1"
+                echo "Run '${config.name}' with no arguments to see available tasks"
                 exit 1
                 ;;
             esac
