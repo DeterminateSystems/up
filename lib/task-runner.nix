@@ -10,6 +10,8 @@ args:
 let
   inherit (lib) mkOption types;
 
+  escapeSingleQuote = s: lib.replaceStrings [ "'" ] [ "'\"'\"'" ] s;
+
   # Topological sort to return an ordered list of task names
   topoSort =
     tasks:
@@ -140,7 +142,7 @@ let
 
           header =
             if config.description != null then
-              ''gum style --border rounded --padding "0 1" --bold "${config.name} — ${lib.escapeShellArg config.description}"''
+              ''gum style --border rounded --padding "0 1" --bold "${config.name} — ${escapeSingleQuote config.description}"''
             else
               ''gum style --border rounded --padding "0 1" --bold "${config.name}"'';
 
@@ -159,12 +161,12 @@ let
                   spaces = lib.concatStringsSep "" (lib.genList (_: " ") (maxLen - lib.stringLength name + 2));
                   aliasStr = lib.optionalString (aliases != [ ]) " [${lib.concatStringsSep ", " aliases}]";
                 in
-                "  ${accent}${name}${reset}${spaces}  ${muted}${lib.escapeShellArg desc}${aliasStr}${reset}";
+                "  ${accent}${name}${reset}${spaces}  ${muted}${escapeSingleQuote desc}${aliasStr}${reset}";
               rows =
                 map (
                   { name, task }:
                   mkRow name (
-                    if task.description != null then (lib.escapeShellArg task.description) else ""
+                    if task.description != null then escapeSingleQuote task.description else ""
                   ) task.aliases
                 ) orderedTasks
                 ++ [ (mkRow "all" "Run all tasks in dependency order" [ ]) ];
