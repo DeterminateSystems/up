@@ -255,7 +255,6 @@ let
                         null
                       else
                         { inherit (proc.readiness_probe.exec) command; };
-
                     inherit (proc.readiness_probe)
                       initial_delay_seconds
                       period_seconds
@@ -340,6 +339,8 @@ let
                 yq -P '.' "$jsonPath" > $out
               '';
 
+          allPackages = lib.unique ([ config.package ] ++ config.packages);
+
           commandText = lib.concatStringsSep " " [
             "process-compose"
             "up"
@@ -349,7 +350,7 @@ let
 
           script = mkScript {
             inherit (config) name excludeShellChecks environment;
-            packages = lib.unique ([ config.package ] ++ config.packages);
+            packages = allPackages;
             command = commandText;
           };
         in

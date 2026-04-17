@@ -29,7 +29,7 @@ let
           );
 
       envAttrs = toEnvAttrs environment;
-      exports = lib.mapAttrsToList (k: v: "export ${k}=${lib.escapeShellArg (toString v)}") envAttrs;
+      exports = lib.concatStringsSep "\n" (lib.mapAttrsToList (k: v: ''export ${k}="${v}"'') envAttrs);
     in
     pkgs.writeShellApplication {
       inherit name excludeShellChecks;
