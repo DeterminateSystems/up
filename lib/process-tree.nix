@@ -242,7 +242,7 @@ let
             }:
             let
               envAttrs = toEnvAttrs environment;
-              mkExport = k: v: if lib.hasInfix "$" v then ''export ${k}="${v}"'' else "export ${k}='${v}'";
+              mkExport = k: v: ''export ${k}="${v}"'';
               exports = lib.concatStringsSep "\n" (lib.mapAttrsToList mkExport envAttrs);
             in
             pkgs.writeShellApplication {
