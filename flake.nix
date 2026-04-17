@@ -144,27 +144,6 @@
               );
           };
 
-          toolchains = {
-            version = 1;
-            doc = ''
-              The `toolchains` output provides language toolchain builder functions.
-              Each toolchain returns `{ packages, env, shellHook }`.
-            '';
-            appendSystem = true;
-            inventory =
-              output:
-              mkChildren (
-                builtins.mapAttrs (system: toolchains: {
-                  forSystems = [ system ];
-                  children = builtins.mapAttrs (_name: toolchain: {
-                    forSystems = [ system ];
-                    evalChecks.isFunction = builtins.isFunction toolchain;
-                    what = "language toolchain builder";
-                  }) toolchains;
-                }) output
-              );
-          };
-
           staticEnvVars = {
             version = 1;
             doc = ''
