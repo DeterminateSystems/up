@@ -330,16 +330,24 @@ let
                 pkgs.watchexec
                 config.package
               ];
-              command = ''
-                exec watchexec \
-                  ${lib.concatMapStringsSep " " (p: "--watch '${toString p}'") w.paths} \
-                  ${lib.concatMapStringsSep " " (i: "--ignore '${i}'") w.ignore} \
-                  --debounce ${toString w.debounce}ms \
-                  --postpone \
-                  --on-busy-update queue \
-                  -- \
-                  process-compose process ${w.action} ${name}
-              '';
+
+              command = lib.concatStringsSep " " [
+                "exec"
+                "watchexec"
+                (lib.concatMapStringsSep " " (p: "--watch '${toString p}'") w.paths)
+                (lib.concatMapStringsSep " " (i: "--ignore '${i}'") w.ignore)
+                "--debounce"
+                "${toString w.debounce}ms"
+                "--postpone"
+                "--on-busy-update"
+                "queue"
+                "--"
+                "process-compose"
+                "process"
+                w.action
+                name
+              ];
+
               depends_on.${name}.condition = "process_started";
 
               # defaults the processModule would provide — watchers bypass it
