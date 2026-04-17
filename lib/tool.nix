@@ -6,22 +6,20 @@
 
 {
   name,
-  package ? null,
-  packages ? [ ],
+  tool ? null,
   args ? [ ],
-  env ? { },
+  environment ? { },
 }:
 
-assert lib.assertMsg (
-  package != null || packages != [ ]
-) "mkTool: '${name}' must specify either 'package' or 'packages'";
+assert lib.assertMsg (tool != null) "mkTool: '${name}' must specify a 'tool'";
 
-let
-  allPackages = lib.optional (package != null) package ++ packages;
-in
 mkScript {
-  inherit name;
-  packages = allPackages;
-  environment = env;
-  command = lib.concatStringsSep " " ([ (lib.getExe (builtins.head allPackages)) ] ++ args);
+  inherit environment name;
+  packages = [ tool ];
+  command = lib.concatStringsSep " " (
+    [
+      (lib.getExe tool)
+    ]
+    ++ args
+  );
 }

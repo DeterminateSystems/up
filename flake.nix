@@ -137,7 +137,7 @@
                     evalChecks.isDerivation = lib.isDerivation runner;
                     children = builtins.mapAttrs (taskName: task: {
                       forSystems = [ system ];
-                      what = task.description or "task";
+                      what = task.description or "task runner";
                     }) (runner.tasks or { });
                   }) runners;
                 }) output
@@ -159,7 +159,7 @@
                 builtins.mapAttrs (_name: env: {
                   evalChecks.isAttrs = builtins.isAttrs env;
                   evalChecks.allStrings = isEnv env;
-                  what = "environment variables set";
+                  what = "static environment variable set";
                 }) output
               );
           };

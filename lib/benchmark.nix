@@ -18,13 +18,10 @@
   setup ? null,
   prepare ? null,
   cleanup ? null,
-  shell ? null,
   exportJson ? null,
   exportMarkdown ? null,
   exportCsv ? null,
   parameterScan ? null, # { var, min, max, step? }
-  reference ? null,
-  referenceName ? null,
 }:
 
 assert lib.assertMsg (
@@ -102,10 +99,6 @@ in
         "--cleanup"
         (lib.trim cleanup)
       ]
-      ++ lib.optionals (shell != null) [
-        "--shell"
-        shell
-      ]
       ++ lib.optionals (exportJson != null) [
         "--export-json"
         exportJson
@@ -120,7 +113,7 @@ in
       ]
       ++ lib.optionals (parameterScan != null) (
         [
-          "-P"
+          "--parameter-scan"
           parameterScan.var
           (toString parameterScan.min)
           (toString parameterScan.max)
@@ -130,14 +123,6 @@ in
           (toString parameterScan.step)
         ]
       )
-      ++ lib.optionals (reference != null) [
-        "--reference"
-        reference
-      ]
-      ++ lib.optionals (referenceName != null) [
-        "--reference-name"
-        referenceName
-      ]
       ++ commandFlags
     )
   );

@@ -98,7 +98,7 @@ let
             lib.types.submodule {
               options = {
                 paths = lib.mkOption {
-                  type = lib.types.listOf (lib.types.either lib.types.str lib.types.path);
+                  type = types.nonEmptyListOf lib.types.str;
                 };
                 debounce = lib.mkOption {
                   type = lib.types.int;
@@ -155,17 +155,13 @@ let
       };
     };
 
-  processesModule =
+  processTreeModule =
     { config, ... }:
     {
       options = {
         name = mkOption {
           type = types.str;
           default = "run-process-tree";
-        };
-        description = mkOption {
-          type = types.nullOr types.str;
-          default = null;
         };
         package = mkOption {
           type = types.package;
@@ -202,6 +198,7 @@ let
         processes = mkOption {
           type = types.attrsOf (types.submodule processModule);
           default = { };
+          apply = v: if v == { } then throw "mkTaskTree: '${config.name}' has no processes" else v;
         };
 
         # generated
@@ -361,9 +358,6 @@ let
           };
         in
         script
-        // lib.optionalAttrs (config.description != null) {
-          inherit (config) description;
-        }
         // {
           script = builtins.readFile "${script}/bin/${config.name}";
           config = builtins.readFile configFile;
@@ -384,7 +378,7 @@ let
 in
 (lib.evalModules {
   modules = [
-    processesModule
+    processTreeModule
     args
   ];
 }).config.script

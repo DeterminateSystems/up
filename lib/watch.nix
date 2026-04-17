@@ -6,24 +6,25 @@
 
 {
   command,
-  watch ? [ "." ],
+  paths ? [ "." ],
   extensions ? [ ],
   ignore ? [ ],
   debounce ? null,
-  clearScreen ? true,
-  onStart ? false,
   package ? pkgs.watchexec,
   packages ? [ ],
-  env ? { },
+  environment ? { },
   description ? null,
+  excludeShellChecks ? [ ],
 }:
+
+assert lib.assertMsg (paths != [ ]) "mkWatch: 'paths' must not be empty";
 
 let
   allPackages = [ package ] ++ packages;
 
-  watchexecCmd =
-    lib.concatStringsSep " " [ (lib.getExe package) ]
-    ++ map (p: "--watch '${p}'") watch
+  watchexecCmd = lib.concatStringsSep " " (
+    [ (lib.getExe package) ]
+    ++ map (p: "--watch '${p}'") paths
     ++ lib.optionals (extensions != [ ]) [
       "--exts"
       (lib.concatStringsSep "," extensions)
@@ -33,23 +34,19 @@ let
       "--debounce"
       (toString debounce)
     ]
-    ++ lib.optionals clearScreen [ "--clear" ]
-    ++ lib.optionals onStart [
-      "--on-busy-update=restart"
-      "--watch-when-idle"
-    ]
     ++ [
       "--"
       command
-    ];
+    ]
+  );
 in
 {
   inherit description;
   raw = true;
   command = mkScript {
     name = "watch";
+    inherit environment excludeShellChecks;
     packages = allPackages;
-    environment = env;
     command = watchexecCmd;
   };
 }
