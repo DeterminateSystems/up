@@ -34,19 +34,6 @@
         );
     in
     {
-      devShells = forEachSupportedSystem (
-        { pkgs, system }:
-        {
-          default = pkgs.mkShellNoCC {
-            packages = with pkgs; [
-              self.formatter.${system}
-            ];
-          };
-        }
-      );
-
-      formatter = forEachSupportedSystem ({ pkgs, ... }: pkgs.nixfmt);
-
       lib = import ./lib;
 
       overlays.default = final: prev: {
@@ -60,8 +47,6 @@
 
       schemas = {
         inherit (inputs.flake-schemas.schemas)
-          devShells
-          formatter
           overlays
           schemas
           ;
