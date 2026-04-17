@@ -5,11 +5,8 @@
 }:
 
 {
-  # task
   packages ? [ ],
-
-  # hyperfine
-  commands, # string, or list of strings, or list of { command, name? }
+  commands,
   package ? pkgs.hyperfine,
   runs ? null,
   minRuns ? null,
@@ -21,7 +18,7 @@
   exportJson ? null,
   exportMarkdown ? null,
   exportCsv ? null,
-  parameterScan ? null, # { var, min, max, step? }
+  parameterScan ? null,
 }:
 
 assert lib.assertMsg (
@@ -29,7 +26,7 @@ assert lib.assertMsg (
 ) "mkBenchmarkTask: 'runs' and 'minRuns'/'maxRuns' are mutually exclusive";
 
 let
-  escapeCmd = cmd: "'${lib.replaceStrings [ "'" ] [ "'\"'\"'" ] (lib.trim cmd)}'";
+  esc = lib.escapeShellArg;
 
   normalizeCommand =
     cmd:
@@ -52,78 +49,73 @@ let
     else
       map normalizeCommand commands;
 
-  commandFlags =
-    if parameterScan != null then
-      map (c: escapeCmd c.command) normalized
-    else
-      lib.concatMap (
-        c:
-        lib.optionals true (
-          lib.optionals (c.name != null) [ "-n '${c.name}'" ] ++ [ (escapeCmd c.command) ]
-        )
-      ) normalized;
+  commandFlags = lib.concatMap (
+    c:
+    lib.optionals (c.name != null && parameterScan == null) [
+      "-n"
+      (esc c.name)
+    ]
+    ++ [ (esc (lib.trim c.command)) ]
+  ) normalized;
 in
 {
   raw = true;
-
   packages = packages ++ [ package ];
 
   command = lib.concatStringsSep " " (
-    lib.filter (s: s != "") (
-      [ (lib.getExe package) ]
-      ++ lib.optionals (runs != null) [
-        "--runs"
-        (toString runs)
+    [ (lib.getExe package) ]
+    ++ lib.optionals (runs != null) [
+      "--runs"
+      (toString runs)
+    ]
+    ++ lib.optionals (minRuns != null) [
+      "--min-runs"
+      (toString minRuns)
+    ]
+    ++ lib.optionals (maxRuns != null) [
+      "--max-runs"
+      (toString maxRuns)
+    ]
+    ++ lib.optionals (warmup != null) [
+      "--warmup"
+      (toString warmup)
+    ]
+    ++ lib.optionals (setup != null) [
+      "--setup"
+      (esc (lib.trim setup))
+    ]
+    ++ lib.optionals (prepare != null) [
+      "--prepare"
+      (esc (lib.trim prepare))
+    ]
+    ++ lib.optionals (cleanup != null) [
+      "--cleanup"
+      (esc (lib.trim cleanup))
+    ]
+    ++ lib.optionals (exportJson != null) [
+      "--export-json"
+      (esc exportJson)
+    ]
+    ++ lib.optionals (exportMarkdown != null) [
+      "--export-markdown"
+      (esc exportMarkdown)
+    ]
+    ++ lib.optionals (exportCsv != null) [
+      "--export-csv"
+      (esc exportCsv)
+    ]
+    ++ lib.optionals (parameterScan != null) (
+      [
+        "--parameter-scan"
+        (esc parameterScan.var)
+        (toString parameterScan.min)
+        (toString parameterScan.max)
       ]
-      ++ lib.optionals (minRuns != null) [
-        "--min-runs"
-        (toString minRuns)
+      ++ lib.optionals (parameterScan ? step) [
+        "--parameter-step-size"
+        (toString parameterScan.step)
       ]
-      ++ lib.optionals (maxRuns != null) [
-        "--max-runs"
-        (toString maxRuns)
-      ]
-      ++ lib.optionals (warmup != null) [
-        "--warmup"
-        (toString warmup)
-      ]
-      ++ lib.optionals (setup != null) [
-        "--setup"
-        (lib.trim setup)
-      ]
-      ++ lib.optionals (prepare != null) [
-        "--prepare"
-        (lib.trim prepare)
-      ]
-      ++ lib.optionals (cleanup != null) [
-        "--cleanup"
-        (lib.trim cleanup)
-      ]
-      ++ lib.optionals (exportJson != null) [
-        "--export-json"
-        exportJson
-      ]
-      ++ lib.optionals (exportMarkdown != null) [
-        "--export-markdown"
-        exportMarkdown
-      ]
-      ++ lib.optionals (exportCsv != null) [
-        "--export-csv"
-        exportCsv
-      ]
-      ++ lib.optionals (parameterScan != null) (
-        [
-          "--parameter-scan"
-          parameterScan.var
-          (toString parameterScan.min)
-          (toString parameterScan.max)
-        ]
-        ++ lib.optionals (parameterScan ? step) [
-          "--parameter-step-size"
-          (toString parameterScan.step)
-        ]
-      )
-      ++ commandFlags
     )
+    ++ commandFlags
   );
 }
