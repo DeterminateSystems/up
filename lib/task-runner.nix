@@ -60,6 +60,10 @@ let
           type = types.str;
           default = "tasks";
         };
+        environment = mkOption {
+          type = types.either (types.attrsOf types.str) (types.listOf types.str);
+          default = { };
+        };
         description = mkOption {
           type = types.nullOr types.str;
           default = null;
