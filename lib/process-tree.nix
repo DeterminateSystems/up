@@ -199,7 +199,7 @@ let
         processes = mkOption {
           type = types.attrsOf (types.submodule processModule);
           default = { };
-          apply = v: if v == { } then throw "mkTaskTree: '${config.name}' has no processes" else v;
+          apply = v: if v == { } then throw "mkProcessTree: '${config.name}' has no processes" else v;
         };
 
         # generated
