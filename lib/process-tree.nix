@@ -222,7 +222,7 @@ let
                 let
                   script = mkScript {
                     name = "run-${name}";
-                    inherit (proc) command environment;
+                    inherit (proc) command environment packages;
                     excludeShellChecks = lib.unique (config.excludeShellChecks ++ proc.excludeShellChecks);
                   };
                 in
@@ -339,11 +339,7 @@ let
                 yq -P '.' "$jsonPath" > $out
               '';
 
-          allPackages = lib.unique (
-            [ config.package ]
-            ++ config.packages
-            ++ lib.flatten (lib.mapAttrsToList (_: proc: proc.packages) allProcesses)
-          );
+          allPackages = lib.unique ([ config.package ] ++ config.packages);
 
           commandText = lib.concatStringsSep " " [
             "process-compose"
