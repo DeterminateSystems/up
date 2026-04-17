@@ -16,5 +16,5 @@ assert lib.assertMsg (tool != null) "mkTool: '${name}' must specify a 'tool'";
 mkScript {
   inherit environment name;
   packages = [ tool ];
-  command = lib.escapeShellArgs ([ (lib.getExe tool) ] ++ args);
+  command = lib.escapeShellArgs ([ (lib.getExe tool) ] ++ (map toString (args)));
 }
