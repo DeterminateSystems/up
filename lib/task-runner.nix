@@ -60,13 +60,13 @@ let
           type = types.str;
           default = "tasks";
         };
-        environment = mkOption {
-          type = types.either (types.attrsOf types.str) (types.listOf types.str);
-          default = { };
-        };
         description = mkOption {
           type = types.nullOr types.str;
           default = null;
+        };
+        environment = mkOption {
+          type = types.either (types.attrsOf types.str) (types.listOf types.str);
+          default = { };
         };
         packages = mkOption {
           type = types.listOf types.package;
@@ -287,7 +287,7 @@ let
             );
 
           commandText = ''
-            if [[ $# -eq 0 || "$1" == "--list" || "$1" == "-l" ]]; then
+            if [[ $# -eq 0 ]]; then
               ${header}
               echo ""
               gum style --bold "Available tasks:"

@@ -22,7 +22,6 @@
   exportJson ? null,
   exportMarkdown ? null,
   exportCsv ? null,
-  status ? null,
   parameterScan ? null, # { var, min, max, step? }
   reference ? null,
   referenceName ? null,
