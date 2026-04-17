@@ -398,7 +398,7 @@ Here's an example:
 
 ```nix
 let
-  procs = pkgs.mkTool {
+  procs = pkgs.lib.mkTool {
     name = "procs";
     package = pkgs.bottom;
     args = [
