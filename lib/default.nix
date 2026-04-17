@@ -15,21 +15,23 @@ let
         if builtins.isAttrs env then
           env
         else
-          builtins.listToAttrs (
+          lib.listToAttrs (
             map (
               s:
               let
-                key = builtins.head (builtins.split "=" s);
+                parts = lib.splitString "=" s;
               in
               {
-                name = key;
-                value = lib.removePrefix "${key}=" s;
+                name = builtins.head parts;
+                value = lib.concatStringsSep "=" (builtins.tail parts);
               }
             ) env
           );
 
       envAttrs = toEnvAttrs environment;
-      exports = lib.concatStringsSep "\n" (lib.mapAttrsToList (k: v: ''export ${k}="${v}"'') envAttrs);
+      exports = lib.concatStringsSep "\n" (
+        lib.mapAttrsToList (k: v: "export ${k}=${lib.escapeShellArg v}") envAttrs
+      );
     in
     pkgs.writeShellApplication {
       inherit name excludeShellChecks;
