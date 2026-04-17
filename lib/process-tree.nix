@@ -106,6 +106,7 @@ let
                 };
                 ignore = lib.mkOption {
                   type = lib.types.listOf lib.types.str;
+                  default = [ ];
                 };
                 action = lib.mkOption {
                   type = lib.types.enum [
