@@ -14,7 +14,6 @@
       supportedSystems = [
         "x86_64-linux"
         "aarch64-linux"
-        "x86_64-darwin"
         "aarch64-darwin"
       ];
       forEachSupportedSystem =
@@ -160,7 +159,7 @@
       );
 
       schemas = {
-        inherit (inputs.flake-schemas.schemas) devShells;
+        inherit (inputs.flake-schemas.schemas) devShells schemas;
       }
       // {
         inherit (inputs.up.exportedSchemas) processTrees taskRunners;
