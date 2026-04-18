@@ -422,6 +422,7 @@ These attributes are available:
 | `name`        | The name of the runnable executable for the runner                           |         |
 | `tool`        | The package available to the script                                          |         |
 | `args`        | A list of arguments to pass to the package                                   | `[]`    |
+| `packages`    | A list of packages to make available at runtime                              | `[]`    |
 | `environment` | Environment variables to pass to the script (supports variables like `$PWD`) | `{ }`   |
 
 ## Schemas

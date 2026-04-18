@@ -49,7 +49,27 @@
           api = pkgs.lib.mkProcessTree {
             name = "api";
 
-            processes.hello.command = "sleep 1000";
+            packages = with pkgs; [
+              cargo
+              rustc
+              grpcurl
+            ];
+
+            processes.build.command = "cargo build --release";
+
+            processes.service = {
+              description = "Run greeter service";
+              command = "cargo run";
+              depends_on.build.condition = "process_completed_successfully";
+            };
+
+            processes.probe = {
+              command = ''
+                grpcurl -plaintext -d '{"name":"world"}' \
+                  localhost:50051 greeter.v1.Greeter/SayHello
+              '';
+              depends_on.service.condition = "process_started";
+            };
           };
         }
       );
@@ -100,6 +120,7 @@
                 command = "buf generate";
               };
               lint = {
+                description = "Lint Protobuf sources";
                 aliases = [ "l" ];
                 command = "buf lint";
               };
