@@ -138,42 +138,38 @@ let
             name: proc:
             let
               w = proc.watch;
+              watcherName = "${name}-watcher";
             in
-            {
-              packages = [
-                pkgs.watchexec
-                config.package
+            (lib.evalModules {
+              modules = [
+                processModule
+                {
+                  command = lib.concatStringsSep " " [
+                    "watchexec"
+                    (lib.concatMapStringsSep " " (p: "--watch '${toString p}'") w.paths)
+                    (lib.concatMapStringsSep " " (i: "--ignore '${i}'") w.ignore)
+                    "--debounce"
+                    "${toString w.debounce}ms"
+                    "--postpone"
+                    "--on-busy-update"
+                    "queue"
+                    "--"
+                    "process-compose"
+                    "process"
+                    w.action
+                    name
+                  ];
+                  packages = [
+                    pkgs.watchexec
+                    config.package
+                  ];
+                  depends_on.${name}.condition = "process_started";
+                }
               ];
-
-              command = lib.concatStringsSep " " [
-                "exec"
-                "watchexec"
-                (lib.concatMapStringsSep " " (p: "--watch '${toString p}'") w.paths)
-                (lib.concatMapStringsSep " " (i: "--ignore '${i}'") w.ignore)
-                "--debounce"
-                "${toString w.debounce}ms"
-                "--postpone"
-                "--on-busy-update"
-                "queue"
-                "--"
-                "process-compose"
-                "process"
-                w.action
-                name
-              ];
-
-              depends_on.${name}.condition = "process_started";
-
-              # defaults the processModule would provide — watchers bypass it
-              environment = { };
-              excludeShellChecks = [ ];
-              working_dir = null;
-              readiness_probe = null;
-              liveness_probe = null;
-              shutdown = null;
-              watch = null;
-              description = null;
-            };
+              specialArgs = {
+                name = watcherName;
+              };
+            }).config;
 
           watcherProcesses = lib.mapAttrs' (
             name: proc: lib.nameValuePair "${name}-watcher" (mkWatcher name proc)

@@ -175,6 +175,27 @@
               );
           };
 
+          processes = {
+            version = 1;
+            doc = ''
+              The `processes` flake output contains declaratively defined long-running
+              processes that can be orchestrated by a process tree. Each
+              process is evaluated through the process module and exposes a generated
+              `script` derivation and `bin` path.
+            '';
+            inventory = output: {
+              children = builtins.mapAttrs (system: procs: {
+                forSystems = [ system ];
+                children = builtins.mapAttrs (procName: proc: {
+                  forSystems = [ system ];
+                  shortDescription = if proc.description == null then "" else proc.description;
+                  what = "process";
+                  derivation = proc.script;
+                }) procs;
+              }) output;
+            };
+          };
+
           processTrees = {
             version = 1;
             doc = ''

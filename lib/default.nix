@@ -65,6 +65,15 @@ in
       ;
   };
 
+  mkProcess =
+    args:
+    (lib.evalModules {
+      modules = [
+        processModule
+        args
+      ];
+    }).config;
+
   mkProcessTree = import ./process-tree.nix {
     inherit
       lib
