@@ -4,11 +4,22 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-tonic = "0.14"
-tonic-prost = "0.14"
-prost = "0.14"
-tonic-reflection = "0.14"
-tokio = { version = "1", features = ["full"] }
-tokio-stream = "0.1"
-tracing = "0.1"
-tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+prost = { version = "0.14", default-features = false }
+tokio = { version = "1", default-features = false, features = [
+  "macros",
+  "rt-multi-thread",
+] }
+tokio-stream = { version = "0.1", default-features = false }
+tonic = { version = "0.14", default-features = false, features = [
+  "router",
+  "transport",
+] }
+tonic-prost = { version = "0.14", default-features = false }
+tonic-reflection = { version = "0.14", default-features = false, features = [
+  "server",
+] }
+tracing = { version = "0.1", default-features = false }
+tracing-subscriber = { version = "0.3", default-features = false, features = [
+  "env-filter",
+  "fmt",
+] }

@@ -44,7 +44,7 @@ impl GreeterService for Greeter {
         tokio::spawn(async move {
             for i in 1..=count {
                 let msg = StreamGreetingsResponse {
-                    message: format!("hello #{i}, {name}"),
+                    message: format!("hello, #{i}, {name}"),
                 };
                 if tx.send(Ok(msg)).await.is_err() {
                     break; // client disconnected
@@ -74,7 +74,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     tracing::info!(%addr, "greeter listening");
 
     Server::builder()
-        .add_service(GreeterServiceServer::new(Greeter::default()))
+        .add_service(GreeterServiceServer::new(Greeter))
         .add_service(reflection)
         .serve(addr)
         .await?;

@@ -36,7 +36,7 @@
         {
           default = pkgs.mkShell {
             packages = with pkgs; [
-              self.processTrees.${system}.api
+              self.processTrees.${system}.dev
               self.taskRunners.${system}.proto
             ];
           };
@@ -46,8 +46,8 @@
       processTrees = forEachSupportedSystem (
         { pkgs, system }:
         {
-          api = pkgs.lib.mkProcessTree {
-            name = "api";
+          dev = pkgs.lib.mkProcessTree {
+            name = "dev";
 
             packages = with pkgs; [
               cargo
@@ -60,15 +60,24 @@
             processes.service = {
               description = "Run greeter service";
               command = "cargo run";
+              readiness_probe = {
+                exec.command = "grpcurl -plaintext localhost:50051 list";
+                period_seconds = 2;
+              };
               depends_on.build.condition = "process_completed_successfully";
+              watch.paths = [
+                "src"
+                "proto"
+                "Cargo.toml"
+              ];
             };
 
             processes.probe = {
               command = ''
                 grpcurl -plaintext -d '{"name":"world"}' \
-                  localhost:50051 greeter.v1.Greeter/SayHello
+                  localhost:50051 greeter.v1.GreeterService/SayHello
               '';
-              depends_on.service.condition = "process_started";
+              depends_on.service.condition = "process_healthy";
             };
           };
         }
@@ -78,7 +87,7 @@
         { pkgs, ... }:
         {
           proto = pkgs.lib.mkTaskRunner {
-            name = "proto";
+            name = "pr";
 
             packages = with pkgs; [
               buf
