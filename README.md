@@ -299,6 +299,8 @@ Here's an example task:
 {
   run-benchmarks =
     pkgs.lib.mkBenchmarkTask {
+      description = "Benchmark the CLI";
+      after = [ "build" ];
       commands = [
         {
           name = "run";
@@ -306,9 +308,6 @@ Here's an example task:
         }
       ];
       runs = 10;
-    }
-    // {
-      description = "Benchmark the CLI";
     };
 }
 ```
@@ -338,15 +337,12 @@ Here's an example task:
 
 ```nix
 {
-  rebuild-site =
-    pkgs.lib.mkWatch {
-      packages = [ pkgs.pnpm ];
-      command = "pnpm run build";
-      paths = [ "src/content" ];
-    }
-    // {
-      description = "Rebuild site upon change";
-    };
+  rebuild-site = pkgs.lib.mkWatch {
+    description = "Rebuild site upon change";
+    packages = [ pkgs.pnpm ];
+    command = "pnpm run build";
+    paths = [ "src/content" ];
+  };
 }
 ```
 

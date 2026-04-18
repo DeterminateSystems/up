@@ -1,14 +1,8 @@
 { lib, pkgs }:
 
 let
-  mkScript =
-    {
-      name,
-      command,
-      environment ? { },
-      packages ? [ ],
-      excludeShellChecks ? [ ],
-    }:
+  mkEnv =
+    environment:
     let
       toEnvAttrs =
         env:
@@ -27,27 +21,34 @@ let
               }
             ) env
           );
-
       envAttrs = toEnvAttrs environment;
-
       isStatic = v: !(lib.hasInfix "$" v);
-      staticEnv = lib.filterAttrs (_: isStatic) envAttrs;
       dynamicEnv = lib.filterAttrs (_: v: !isStatic v) envAttrs;
-
       escapeForDoubleQuotes = v: lib.replaceStrings [ "\\" "\"" "`" "!" ] [ "\\\\" "\\\"" "\\`" "\\!" ] v;
-
-      dynamicExports = lib.concatStringsSep "\n" (
+    in
+    {
+      static = lib.filterAttrs (_: isStatic) envAttrs;
+      exports = lib.concatStringsSep "\n" (
         lib.mapAttrsToList (k: v: ''export ${k}="${escapeForDoubleQuotes v}"'') dynamicEnv
       );
+    };
+
+  mkScript =
+    {
+      name,
+      command,
+      environment ? { },
+      packages ? [ ],
+      excludeShellChecks ? [ ],
+    }:
+    let
+      inherit (mkEnv environment) static exports;
     in
     pkgs.writeShellApplication {
       inherit name excludeShellChecks;
       runtimeInputs = packages;
-      runtimeEnv = staticEnv;
-
-      text = lib.concatStringsSep "\n\n" (
-        lib.optionals (dynamicEnv != { }) [ dynamicExports ] ++ [ command ]
-      );
+      runtimeEnv = static;
+      text = lib.concatStringsSep "\n\n" (lib.optionals (exports != "") [ exports ] ++ [ command ]);
     };
 
   processModule = import ./process.nix {
