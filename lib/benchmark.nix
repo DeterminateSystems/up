@@ -29,6 +29,24 @@ assert lib.assertMsg (
 let
   esc = lib.escapeShellArg;
 
+  taskModuleArgs = builtins.removeAttrs args [
+    "commands"
+    "command"
+    "package"
+    "packages"
+    "runs"
+    "minRuns"
+    "maxRuns"
+    "warmup"
+    "setup"
+    "prepare"
+    "cleanup"
+    "exportJson"
+    "exportMarkdown"
+    "exportCsv"
+    "parameterScan"
+  ];
+
   normalizeCommand =
     cmd:
     if builtins.isString cmd then
@@ -59,22 +77,7 @@ let
     ++ [ (esc (lib.trim c.command)) ]
   ) normalized;
 in
-builtins.removeAttrs args [
-  "packages"
-  "commands"
-  "package"
-  "runs"
-  "minRuns"
-  "maxRuns"
-  "warmup"
-  "setup"
-  "prepare"
-  "cleanup"
-  "exportJson"
-  "exportMarkdown"
-  "exportCsv"
-  "parameterScan"
-]
+taskModuleArgs
 // {
   raw = true;
   packages = packages ++ [ package ];
