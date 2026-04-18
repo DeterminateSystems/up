@@ -428,7 +428,7 @@ These attributes are available:
 
 We also recommend using the [flake schemas][flake-schemas] for added introspectability into your [`taskRunners`](#task-runners), [`processTrees`](#process-trees), and [environment variable](#environment-variable-sets) outputs:
 
-```text
+```nix
 {
   schemas = inputs.up.exportedSchemas // {
     # other schemas
