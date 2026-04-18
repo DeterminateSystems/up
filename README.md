@@ -266,6 +266,7 @@ pkgs.lib.mkTaskRunner {
 | `packages`           | A list of packages to make available to the `command`                               | `[ ]`                                         |
 | `before`             | The tasks before which the task needs to run                                        | `[ ]`                                         |
 | `after`              | The tasks after which the task needs to run                                         | `[ ]`                                         |
+| `skip`               | Whether to skip the task when running `all`                                         | `false`                                       |
 | `requireArgs`        | Whether the command requires additional arguments                                   | `false`                                       |
 | `confirm`            | Whether the command requires confirmation to proceed                                | `false`                                       |
 | `raw`                | Whether you want the command to return raw shell output                             | `false`                                       |

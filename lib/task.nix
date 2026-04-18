@@ -63,6 +63,10 @@ in
       type = types.listOf types.str;
       default = [ ];
     };
+    skip = mkOption {
+      type = types.bool;
+      default = false;
+    };
 
     # colors
     errorColor = lib.mkOption {

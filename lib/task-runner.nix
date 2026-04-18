@@ -242,9 +242,12 @@ let
 
           runAllSteps =
             let
-              rawTasks = builtins.filter ({ task, ... }: task.raw) orderedTasks;
-              runnableTasks = builtins.filter ({ task, ... }: !task.raw) orderedTasks;
-              skipped = builtins.filter ({ task, ... }: task.requireArgs) runnableTasks;
+              skippedTasks = builtins.filter (
+                { task, ... }: task.skip || task.raw || task.requireArgs
+              ) orderedTasks;
+              runnableTasks = builtins.filter (
+                { task, ... }: !task.raw && !task.skip && !task.requireArgs
+              ) orderedTasks;
 
               steps = lib.concatStringsSep "\n" (
                 map (
@@ -267,22 +270,14 @@ let
             lib.concatStringsSep "\n" (
               lib.filter (s: s != "") [
                 steps
-                (lib.optionalString (skipped != [ ]) ''
+                (lib.optionalString (skippedTasks != [ ]) ''
                   echo ""
-                  gum style --foreground ${mutedColor} "Some tasks were skipped. Run them individually to provide arguments:"
-                  ${lib.concatStringsSep "\n" (
-                    map (
-                      { name, ... }: ''gum style --foreground ${accentColor} "  ${config.name} ${name} <args>"''
-                    ) skipped
-                  )}
+                  gum style --foreground ${mutedColor} "These tasks were skipped:"
+                  gum style --foreground ${accentColor} "  ${
+                    lib.concatStringsSep " " (map ({ name, ... }: name) skippedTasks)
+                  }"
                 '')
-                (lib.optionalString (rawTasks != [ ]) ''
-                  echo ""
-                  gum style --foreground ${mutedColor} "Some tasks were excluded because they produce raw output. Run them individually instead:"
-                  ${lib.concatStringsSep "\n" (
-                    map ({ name, ... }: ''gum style --foreground ${accentColor} "  ${config.name} ${name}"'') rawTasks
-                  )}
-                '')
+
               ]
             );
 
