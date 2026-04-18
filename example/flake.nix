@@ -55,29 +55,31 @@
               grpcurl
             ];
 
-            processes.build.command = "cargo build --release";
+            processes = {
+              build.command = "cargo build --release";
 
-            processes.service = {
-              description = "Run greeter service";
-              command = "cargo run";
-              readiness_probe = {
-                exec.command = "grpcurl -plaintext localhost:50051 list";
-                period_seconds = 2;
+              service = {
+                description = "Run greeter service";
+                command = "cargo run";
+                readiness_probe = {
+                  exec.command = "grpcurl -plaintext localhost:50051 list";
+                  period_seconds = 2;
+                };
+                depends_on.build.condition = "process_completed_successfully";
+                watch.paths = [
+                  "src"
+                  "proto"
+                  "Cargo.toml"
+                ];
               };
-              depends_on.build.condition = "process_completed_successfully";
-              watch.paths = [
-                "src"
-                "proto"
-                "Cargo.toml"
-              ];
-            };
 
-            processes.probe = {
-              command = ''
-                grpcurl -plaintext -d '{"name":"world"}' \
-                  localhost:50051 greeter.v1.GreeterService/SayHello
-              '';
-              depends_on.service.condition = "process_healthy";
+              probe = {
+                command = ''
+                  grpcurl -plaintext -d '{"name":"world"}' \
+                    localhost:50051 greeter.v1.GreeterService/SayHello
+                '';
+                depends_on.service.condition = "process_healthy";
+              };
             };
           };
         }

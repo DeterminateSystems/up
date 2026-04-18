@@ -1,6 +1,5 @@
 {
   lib,
-  mkScript,
   pkgs,
 }:
 
@@ -12,15 +11,21 @@
   debounce ? null,
   package ? pkgs.watchexec,
   packages ? [ ],
-  environment ? { },
-  excludeShellChecks ? [ ],
   ...
 }@args:
 
 assert lib.assertMsg (paths != [ ]) "mkWatch: 'paths' must not be empty";
 
 let
-  allPackages = [ package ] ++ packages;
+  taskModuleArgs = builtins.removeAttrs args [
+    "command"
+    "paths"
+    "extensions"
+    "ignore"
+    "debounce"
+    "package"
+    "packages"
+  ];
 
   watchexecPrefix = lib.escapeShellArgs (
     [ (lib.getExe package) ]
@@ -44,12 +49,9 @@ let
   );
   watchexecCmd = "${watchexecPrefix} ${command}";
 in
-{
+taskModuleArgs
+// {
   raw = true;
-  command = mkScript {
-    name = "watch";
-    inherit environment excludeShellChecks;
-    packages = allPackages;
-    command = watchexecCmd;
-  };
+  packages = packages ++ [ package ];
+  command = watchexecCmd;
 }
