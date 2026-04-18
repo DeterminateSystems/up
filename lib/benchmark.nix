@@ -19,7 +19,8 @@
   exportMarkdown ? null,
   exportCsv ? null,
   parameterScan ? null,
-}:
+  ...
+}@args:
 
 assert lib.assertMsg (
   runs == null || (minRuns == null && maxRuns == null)
@@ -58,10 +59,25 @@ let
     ++ [ (esc (lib.trim c.command)) ]
   ) normalized;
 in
-{
+builtins.removeAttrs args [
+  "packages"
+  "commands"
+  "package"
+  "runs"
+  "minRuns"
+  "maxRuns"
+  "warmup"
+  "setup"
+  "prepare"
+  "cleanup"
+  "exportJson"
+  "exportMarkdown"
+  "exportCsv"
+  "parameterScan"
+]
+// {
   raw = true;
   packages = packages ++ [ package ];
-
   command = lib.concatStringsSep " " (
     [ (lib.getExe package) ]
     ++ lib.optionals (runs != null) [

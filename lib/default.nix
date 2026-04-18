@@ -29,16 +29,24 @@ let
           );
 
       envAttrs = toEnvAttrs environment;
-      exports = lib.concatStringsSep "\n" (
-        lib.mapAttrsToList (k: v: "export ${k}=${lib.escapeShellArg v}") envAttrs
+
+      isStatic = v: !(lib.hasInfix "$" v);
+      staticEnv = lib.filterAttrs (_: isStatic) envAttrs;
+      dynamicEnv = lib.filterAttrs (_: v: !isStatic v) envAttrs;
+
+      escapeForDoubleQuotes = v: lib.replaceStrings [ "\\" "\"" "`" "!" ] [ "\\\\" "\\\"" "\\`" "\\!" ] v;
+
+      dynamicExports = lib.concatStringsSep "\n" (
+        lib.mapAttrsToList (k: v: ''export ${k}="${escapeForDoubleQuotes v}"'') dynamicEnv
       );
     in
     pkgs.writeShellApplication {
       inherit name excludeShellChecks;
       runtimeInputs = packages;
+      runtimeEnv = staticEnv;
       text = lib.concatStringsSep "\n" (
         lib.filter (s: s != "") [
-          exports
+          dynamicExports
           command
         ]
       );

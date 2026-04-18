@@ -229,7 +229,9 @@ let
                 "${script}/bin/run-${name}";
 
               depends_on = if proc.depends_on == { } then null else proc.depends_on;
+
               environment = null;
+
               liveness_probe =
                 if proc.liveness_probe == null then
                   null

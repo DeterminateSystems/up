@@ -13,9 +13,9 @@
   package ? pkgs.watchexec,
   packages ? [ ],
   environment ? { },
-  description ? null,
   excludeShellChecks ? [ ],
-}:
+  ...
+}@args:
 
 assert lib.assertMsg (paths != [ ]) "mkWatch: 'paths' must not be empty";
 
@@ -45,7 +45,6 @@ let
   watchexecCmd = "${watchexecPrefix} ${command}";
 in
 {
-  inherit description;
   raw = true;
   command = mkScript {
     name = "watch";
