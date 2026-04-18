@@ -50,6 +50,10 @@ let
       );
     };
 
+  processModule = import ./process.nix {
+    inherit lib mkScript pkgs;
+  };
+
   taskModule = import ./task.nix { inherit lib mkScript pkgs; };
 in
 {
@@ -57,6 +61,16 @@ in
     inherit
       lib
       pkgs
+      taskModule
+      ;
+  };
+
+  mkProcessTree = import ./process-tree.nix {
+    inherit
+      lib
+      mkScript
+      pkgs
+      processModule
       taskModule
       ;
   };
@@ -70,16 +84,7 @@ in
       ;
   };
 
-  mkProcessTree = import ./process-tree.nix {
-    inherit
-      lib
-      mkScript
-      pkgs
-      taskModule
-      ;
-  };
+  mkTool = import ./tool.nix { inherit lib mkScript pkgs; };
 
   mkWatch = import ./watch.nix { inherit lib pkgs; };
-
-  mkTool = import ./tool.nix { inherit lib mkScript pkgs; };
 }
