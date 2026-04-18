@@ -51,7 +51,7 @@ let
 in
 taskModuleArgs
 // {
-  raw = true;
+  skip = true;
   packages = packages ++ [ package ];
   command = watchexecCmd;
 }
