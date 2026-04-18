@@ -44,11 +44,9 @@ let
       inherit name excludeShellChecks;
       runtimeInputs = packages;
       runtimeEnv = staticEnv;
-      text = lib.concatStringsSep "\n" (
-        lib.filter (s: s != "") [
-          dynamicExports
-          command
-        ]
+
+      text = lib.concatStringsSep "\n\n" (
+        lib.optionals (dynamicEnv != { }) [ dynamicExports ] ++ [ command ]
       );
     };
 
