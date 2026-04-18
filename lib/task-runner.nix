@@ -242,12 +242,9 @@ let
 
           runAllSteps =
             let
-              skippedTasks = builtins.filter (
-                { task, ... }: task.skip || task.raw || task.requireArgs
-              ) orderedTasks;
-              runnableTasks = builtins.filter (
-                { task, ... }: !task.raw && !task.skip && !task.requireArgs
-              ) orderedTasks;
+              tasks = lib.partition ({ task, ... }: !task.raw && !task.skip && !task.requireArgs) orderedTasks;
+              skipped = tasks.wrong;
+              runnable = tasks.right;
 
               steps = lib.concatStringsSep "\n" (
                 map (
@@ -264,17 +261,17 @@ let
                     ''
                   else
                     runStep name task.bin "" task.raw
-                ) runnableTasks
+                ) runnable
               );
             in
             lib.concatStringsSep "\n" (
               lib.filter (s: s != "") [
                 steps
-                (lib.optionalString (skippedTasks != [ ]) ''
+                (lib.optionalString (skipped != [ ]) ''
                   echo ""
                   gum style --foreground ${mutedColor} "These tasks were skipped:"
                   gum style --foreground ${accentColor} "  ${
-                    lib.concatStringsSep " " (map ({ name, ... }: name) skippedTasks)
+                    lib.concatStringsSep " " (map ({ name, ... }: name) skipped)
                   }"
                 '')
 
