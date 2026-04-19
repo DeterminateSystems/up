@@ -64,7 +64,7 @@
             ];
 
             processes = {
-              build.command = "cargo build --release";
+              build.command = self.taskRunners.${system}.proto.tasks.build.command;
 
               service = {
                 description = "Run greeter service";
@@ -111,8 +111,14 @@
 
             tasks = {
               build = {
-                description = "Build the buf module";
+                description = "Build the server";
                 aliases = [ "b" ];
+                after = [ "generate" ];
+                command = "cargo build --release";
+              };
+              proto-build = {
+                description = "Build the buf module";
+                aliases = [ "pb" ];
                 after = [
                   "clean"
                   "lint"
@@ -138,7 +144,7 @@
                   "gen"
                   "g"
                 ];
-                after = [ "build" ];
+                after = [ "proto-build" ];
                 command = "buf generate";
               };
               lint = {

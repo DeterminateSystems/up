@@ -206,7 +206,7 @@ let
           ];
 
           baseScript = mkScript {
-            inherit (config) name excludeShellChecks environment;
+            inherit (config) environment excludeShellChecks name;
             packages = allPackages;
             command = commandText;
           };
@@ -225,8 +225,6 @@ let
         in
         script
         // {
-          script = builtins.readFile "${script}/bin/${config.name}";
-          config = builtins.readFile configFile;
           processes = lib.mapAttrs (
             name: proc:
             proc

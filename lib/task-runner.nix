@@ -325,17 +325,16 @@ let
               };
         in
         script
+        // lib.optionalAttrs (config.description != null) {
+          inherit (config) description;
+        }
         // {
-          command = commandText;
           tasks = lib.mapAttrs (_: task: {
             inherit (task) description;
             command = lib.getExe task.script;
             before = task.before or [ ];
             after = task.after or [ ];
           }) resolvedTasks;
-        }
-        // lib.optionalAttrs (config.description != null) {
-          inherit (config) description;
         };
     };
 in

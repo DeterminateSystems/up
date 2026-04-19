@@ -44,7 +44,7 @@ impl GreeterService for Greeter {
         tokio::spawn(async move {
             for i in 1..=count {
                 let msg = StreamGreetingsResponse {
-                    message: format!("hello, #{i}, {name}"),
+                    message: format!("hello #{i}, {name}"),
                 };
                 if tx.send(Ok(msg)).await.is_err() {
                     break; // client disconnected
