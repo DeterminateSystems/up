@@ -5,6 +5,10 @@
       url = "path:..";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+    fenix = {
+      url = "https://flakehub.com/f/nix-community/fenix/0.1";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
     flake-schemas.follows = "up/flake-schemas";
   };
 
@@ -24,7 +28,10 @@
             inherit system;
             pkgs = import inputs.nixpkgs {
               inherit system;
-              overlays = [ inputs.up.overlays.default ];
+              overlays = [
+                inputs.up.overlays.default
+                self.overlays.default
+              ];
             };
           }
         );
@@ -35,6 +42,8 @@
         {
           default = pkgs.mkShell {
             packages = with pkgs; [
+              rustToolchain
+
               self.processTrees.${system}.dev
               self.taskRunners.${system}.proto
             ];
@@ -49,8 +58,7 @@
             name = "dev";
 
             packages = with pkgs; [
-              cargo
-              rustc
+              rustToolchain
               grpcurl
             ];
 
@@ -88,7 +96,10 @@
         { pkgs, ... }:
         {
           proto = pkgs.lib.mkTaskRunner {
-            name = "pr";
+            name = "proto";
+            description = "Protobuf-related tasks";
+
+            aliases = [ "pr" ];
 
             packages = with pkgs; [
               buf
@@ -134,29 +145,42 @@
                 aliases = [ "l" ];
                 command = "buf lint";
               };
-              watch-gen =
-                pkgs.lib.mkWatch {
-                  command = "buf generate";
-                  paths = [
-                    "proto"
-                    "buf.gen.yaml"
-                  ];
-                  extensions = [
-                    "proto"
-                    "yaml"
-                  ];
-                }
-                // {
-                  description = "Regenerate stubs on .proto change";
-                  aliases = [
-                    "w"
-                    "dev"
-                  ];
-                };
+              watch-gen = pkgs.lib.mkWatch {
+                description = "Regenerate stubs on .proto change";
+                aliases = [
+                  "w"
+                  "dev"
+                ];
+                command = "buf generate";
+                paths = [
+                  "proto"
+                  "buf.gen.yaml"
+                ];
+                extensions = [
+                  "proto"
+                  "yaml"
+                ];
+              };
             };
           };
         }
       );
+
+      overlays.default = final: prev: {
+        rustToolchain =
+          with inputs.fenix.packages.${prev.stdenv.hostPlatform.system};
+          combine (
+            with stable;
+            [
+              cargo
+              clippy
+              rustc
+              rustfmt
+              rust-src
+              rust-analyzer
+            ]
+          );
+      };
 
       schemas = {
         inherit (inputs.flake-schemas.schemas) devShells schemas;

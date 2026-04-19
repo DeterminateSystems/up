@@ -64,6 +64,10 @@ let
           type = types.nullOr types.str;
           default = null;
         };
+        aliases = mkOption {
+          type = types.listOf types.str;
+          default = [ ];
+        };
         environment = mkOption {
           type = types.either (types.attrsOf types.str) (types.listOf types.str);
           default = { };
@@ -301,13 +305,26 @@ let
                 ;;
             esac
           '';
-        in
 
-        mkScript {
-          inherit (config) name environment;
-          packages = lib.unique (config.packages ++ [ gum ]);
-          command = commandText;
-        }
+          baseScript = mkScript {
+            inherit (config) name environment;
+            packages = lib.unique (config.packages ++ [ gum ]);
+            command = commandText;
+          };
+
+          scriptWithAliases =
+            if config.aliases == [ ] then
+              baseScript
+            else
+              pkgs.symlinkJoin {
+                inherit (config) name;
+                paths = [ baseScript ];
+                postBuild = lib.concatMapStringsSep "\n" (
+                  alias: "ln -s ${config.name} $out/bin/${alias}"
+                ) config.aliases;
+              };
+        in
+        scriptWithAliases
         // {
           command = commandText;
           tasks = lib.mapAttrs (_: task: {
