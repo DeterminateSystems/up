@@ -56,6 +56,7 @@
         {
           dev = pkgs.lib.mkProcessTree {
             name = "dev";
+            aliases = [ "d" ];
 
             packages = with pkgs; [
               rustToolchain

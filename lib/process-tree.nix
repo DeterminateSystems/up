@@ -19,6 +19,10 @@ let
           type = types.str;
           default = "run-process-tree";
         };
+        aliases = mkOption {
+          type = types.listOf types.str;
+          default = [ ];
+        };
         package = mkOption {
           type = types.package;
           default = pkgs.process-compose;
@@ -201,11 +205,23 @@ let
             configFile
           ];
 
-          script = mkScript {
+          baseScript = mkScript {
             inherit (config) name excludeShellChecks environment;
             packages = allPackages;
             command = commandText;
           };
+
+          script =
+            if config.aliases == [ ] then
+              baseScript
+            else
+              pkgs.symlinkJoin {
+                inherit (config) name;
+                paths = [ baseScript ];
+                postBuild = lib.concatMapStringsSep "\n" (
+                  alias: "ln -s ${config.name} $out/bin/${alias}"
+                ) config.aliases;
+              };
         in
         script
         // {

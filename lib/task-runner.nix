@@ -312,7 +312,7 @@ let
             command = commandText;
           };
 
-          scriptWithAliases =
+          script =
             if config.aliases == [ ] then
               baseScript
             else
@@ -324,7 +324,7 @@ let
                 ) config.aliases;
               };
         in
-        scriptWithAliases
+        script
         // {
           command = commandText;
           tasks = lib.mapAttrs (_: task: {
