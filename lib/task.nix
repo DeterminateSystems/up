@@ -49,7 +49,8 @@ in
     };
     excludeShellChecks = mkOption {
       type = types.listOf types.str;
-      default = [ ];
+      default = [
+      ];
     };
     confirm = mkOption {
       type = types.bool;

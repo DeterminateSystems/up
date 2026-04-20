@@ -179,27 +179,27 @@ let
 
           runStep = name: bin: args: raw: ''
             gum style --foreground ${accentColor} '▶ ${name}'
-            echo ""
             set +e
             ${
               if raw then
                 ''
+                  echo ""
                   ${bin} ${args}
                   _exit=$?
+                  echo ""
                 ''
               else
                 ''
                   _output=$(${bin} ${args} 2>&1)
                   _exit=$?
+                  if [[ -n "$_output" ]]; then
+                    echo ""
+                    echo "$_output" | awk '/^[[:space:]]*$/{blank++; next} {for(i=0;i<blank;i++) print ""; blank=0; print}' | gum style --margin "0 0 0 2"
+                    echo ""
+                  fi
                 ''
             }
             set -e
-            ${lib.optionalString (!raw) ''
-              if [[ -n "$_output" ]]; then
-                echo "$_output" | awk '/^[[:space:]]*$/{blank++; next} {for(i=0;i<blank;i++) print ""; blank=0; print}' | gum style --margin "0 0 0 2"
-              fi
-            ''}
-            echo ""
             if [[ "''${_exit}" -ne 0 ]]; then
               gum style --foreground ${errorColor} "✗ ${name} failed (exit code ''${_exit})"
               exit "''${_exit}"
