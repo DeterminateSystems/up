@@ -1,10 +1,7 @@
 {
   inputs = {
-    nixpkgs.url = "https://flakehub.com/f/NixOS/nixpkgs/0.1";
-    up = {
-      url = "path:..";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
+    nixpkgs.follows = "up/nixpkgs";
+    up.url = "path:..";
     fenix = {
       url = "https://flakehub.com/f/nix-community/fenix/0.1";
       inputs.nixpkgs.follows = "nixpkgs";
