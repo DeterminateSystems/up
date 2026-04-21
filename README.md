@@ -84,18 +84,15 @@ To run:
 nix run ".#processTrees.<system>.postgres"
 ```
 
-Notice that you can provide packages at the top level.
-You can also provide packages only to a specific process:
+You can add process trees to your development environment to run them more easily:
 
 ```nix
-{
-  postgres-setup = {
-    packages = [ pkgs.postgresql ];
-    command = ''
-      mkdir -p $PGDATA
-      [[ -e "$PGDATA/PG_VERSION" ]] || initdb --no-locale --encoding=UTF8
-    '';
-  };
+pkgs.mkShell {
+  packages = [
+    self.processTrees.${system}.postgres
+
+    # other packages
+  ];
 }
 ```
 
@@ -151,7 +148,7 @@ Here's how you can create a task runner in your flake:
   taskRunners = forEachSupportedSystem (
     { pkgs, system }:
     {
-      default = pkgs.lib.mkTaskRunner {
+      work = pkgs.lib.mkTaskRunner {
         name = "work";
         description = "Run linters and formatters";
         packages = with pkgs; [
@@ -197,12 +194,12 @@ To run it:
 nix run ".#taskRunners.<system>.default"
 ```
 
-You can also add the runner to your development environment:
+You can also task runners to your development environment to run them more easily:
 
 ```nix
 pkgs.mkShell {
   packages = [
-    self.taskRunners.${system}.default
+    self.taskRunners.${system}.work
 
     # other packages
   ];
