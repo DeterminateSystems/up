@@ -70,12 +70,12 @@ in
     };
 
     # colors
-    errorColor = lib.mkOption {
-      type = lib.types.str;
+    errorColor = mkOption {
+      type = types.str;
       default = "1";
     };
-    mutedColor = lib.mkOption {
-      type = lib.types.str;
+    mutedColor = mkOption {
+      type = types.str;
       default = "248";
     };
 
@@ -86,6 +86,12 @@ in
     };
     script = mkOption {
       type = types.package;
+      readOnly = true;
+    };
+
+    # tag
+    __task = mkOption {
+      type = types.bool;
       readOnly = true;
     };
   };
@@ -116,6 +122,8 @@ in
         };
     in
     {
+      __task = true;
+
       inherit script;
 
       bin = lib.getExe config.script;

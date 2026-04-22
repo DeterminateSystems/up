@@ -66,6 +66,12 @@ let
           type = types.package;
           readOnly = true;
         };
+
+        # tag
+        __processTree = mkOption {
+          type = types.bool;
+          readOnly = true;
+        };
       };
 
       config.script =
@@ -225,6 +231,8 @@ let
         in
         script
         // {
+          __processTree = true;
+
           processes = lib.mapAttrs (
             name: proc:
             proc

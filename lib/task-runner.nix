@@ -90,18 +90,24 @@ let
           type = types.str;
           default = "2";
         };
-        errorColor = lib.mkOption {
-          type = lib.types.str;
+        errorColor = mkOption {
+          type = types.str;
           default = "1";
         };
-        mutedColor = lib.mkOption {
-          type = lib.types.str;
+        mutedColor = mkOption {
+          type = types.str;
           default = "248";
         };
 
         # generated
         script = mkOption {
           type = types.package;
+          readOnly = true;
+        };
+
+        # tag
+        __taskRunner = mkOption {
+          type = types.bool;
           readOnly = true;
         };
       };
@@ -329,6 +335,8 @@ let
           inherit (config) description;
         }
         // {
+          __taskRunner = true;
+
           tasks = lib.mapAttrs (_: task: {
             inherit (task) description;
             command = lib.getExe task.script;

@@ -165,6 +165,12 @@ in
       type = types.str;
       readOnly = true;
     };
+
+    # tag
+    __process = mkOption {
+      type = types.bool;
+      readOnly = true;
+    };
   };
 
   config =
@@ -174,11 +180,14 @@ in
         if builtins.isString config.command then config.command else lib.getExe config.command;
     in
     {
+      __process = true;
+
       script = mkScript {
         name = "run-${procName}";
         inherit (config) environment packages excludeShellChecks;
         command = resolvedCommand;
       };
+
       bin = lib.getExe config.script;
     };
 }
