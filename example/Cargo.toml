@@ -1,0 +1,25 @@
+[package]
+name = "greeter"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+prost = { version = "0.14", default-features = false }
+tokio = { version = "1", default-features = false, features = [
+  "macros",
+  "rt-multi-thread",
+] }
+tokio-stream = { version = "0.1", default-features = false }
+tonic = { version = "0.14", default-features = false, features = [
+  "router",
+  "transport",
+] }
+tonic-prost = { version = "0.14", default-features = false }
+tonic-reflection = { version = "0.14", default-features = false, features = [
+  "server",
+] }
+tracing = { version = "0.1", default-features = false }
+tracing-subscriber = { version = "0.3", default-features = false, features = [
+  "env-filter",
+  "fmt",
+] }

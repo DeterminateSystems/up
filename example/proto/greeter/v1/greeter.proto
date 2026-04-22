@@ -1,0 +1,25 @@
+syntax = "proto3";
+
+package greeter.v1;
+
+service GreeterService {
+  rpc SayHello(SayHelloRequest) returns (SayHelloResponse);
+  rpc StreamGreetings(StreamGreetingsRequest) returns (stream StreamGreetingsResponse);
+}
+
+message SayHelloRequest {
+  string name = 1;
+}
+
+message SayHelloResponse {
+  string message = 1;
+}
+
+message StreamGreetingsRequest {
+  string name = 1;
+  uint32 count = 2;
+}
+
+message StreamGreetingsResponse {
+  string message = 1;
+}

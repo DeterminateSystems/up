@@ -1,0 +1,18 @@
+version: v2
+
+plugins:
+  - local: protoc-gen-prost
+    out: src/gen
+    opt:
+      - bytes=.
+      - compile_well_known_types
+      - file_descriptor_set
+
+  - local: protoc-gen-tonic
+    out: src/gen
+    opt:
+      - no_include
+      - compile_well_known_types
+
+inputs:
+  - directory: proto
