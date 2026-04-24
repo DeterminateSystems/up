@@ -92,6 +92,7 @@ let
         "watchers"
         "package"
         "packages"
+        "exitMsg"
       ];
 
       # Resolve each watcher's package (explicit > shared default).
