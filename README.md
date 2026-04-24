@@ -358,6 +358,29 @@ These attributes are available:
 | `package`            | The watchexec package to use                                                | `pkgs.watchexec` |
 | `excludeShellChecks` | [shellcheck] rules to disable in the command                                | `[ ]`            |
 
+There's also a function called `mkWatchMany` that enables you to run multiple watchexec commands at the same time by specifying a `watchers` list:
+
+```nix
+{
+  dev = pkgs.lib.mkWatchMany {
+    description = "Watch/build Rust and Protobuf";
+    packages = with pkgs; [ buf cargo ];
+    watchers = [
+      {
+        command = "buf generate";
+        extensions = [ "proto" ];
+        paths = [ "proto" ];
+      }
+      {
+        command = "cargo check";
+        extensions = [ "rs" ];
+        paths = [ "src" ];
+      }
+    ];
+  };
+}
+```
+
 ## Environment variable sets
 
 There are two types of environment variable sets: **static** and **computed**.

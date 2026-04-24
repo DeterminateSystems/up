@@ -149,6 +149,30 @@
                 aliases = [ "l" ];
                 command = "buf lint";
               };
+
+              watch-all = pkgs.lib.mkWatchMany {
+                description = "Multiple watch tasks";
+                aliases = [ "wa" ];
+                watchers = [
+                  {
+                    command = "buf generate";
+                    paths = [
+                      "proto"
+                      "buf.gen.yaml"
+                    ];
+                    extensions = [
+                      "proto"
+                      "yaml"
+                    ];
+                  }
+                  {
+                    command = "cargo check";
+                    paths = [ "src" ];
+                    extensions = [ "rs" ];
+                  }
+                ];
+              };
+
               watch-gen = pkgs.lib.mkWatch {
                 description = "Regenerate stubs on .proto change";
                 aliases = [
@@ -187,7 +211,7 @@
       };
 
       schemas = {
-        inherit (inputs.flake-schemas.schemas) devShells schemas;
+        inherit (inputs.flake-schemas.schemas) devShells overlays schemas;
       }
       // {
         inherit (inputs.up.exportedSchemas) processTrees taskRunners;

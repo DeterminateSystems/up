@@ -23,6 +23,10 @@ let
           type = types.listOf types.str;
           default = [ ];
         };
+        tui = mkOption {
+          type = types.bool;
+          default = false;
+        };
         package = mkOption {
           type = types.package;
           default = pkgs.process-compose;
@@ -192,6 +196,7 @@ let
               {
                 json = builtins.toJSON (stripNulls {
                   inherit (config) log_level;
+                  is_tui_disabled = !config.tui;
                   log_location = "/tmp/pc-debug.log";
                   processes = lib.mapAttrs serializeProcess allProcesses;
                 });

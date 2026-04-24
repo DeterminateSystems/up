@@ -24,7 +24,7 @@ impl GreeterService for Greeter {
         let message = if name.is_empty() {
             "hello, stranger".into()
         } else {
-            format!("hello, {name}")
+            format!("hello there, {name}")
         };
         tracing::info!(%name, "say_hello");
         Ok(Response::new(SayHelloResponse { message }))

@@ -1,12 +1,13 @@
-name: Rolling releases to FlakeHub
+name: Checks
 
 on:
+  pull_request:
   push:
     branches:
       - main
 
 jobs:
-  flakehub-publish:
+  checks:
     runs-on: ubuntu-latest
     permissions:
       id-token: write
@@ -18,9 +19,12 @@ jobs:
 
       - uses: DeterminateSystems/determinate-nix-action@v3
 
-      - uses: DeterminateSystems/flakehub-push@main
-        with:
-          name: DeterminateSystems/up
-          rolling: true
-          visibility: public
-          include-output-paths: true
+      - uses: DeterminateSystems/flakehub-cache-action@v3
+
+      - name: Flake checks (root)
+        run: |
+          nix flake check --all-systems
+
+      - name: Flake checks (example)
+        run: |
+          nix flake check --all-systems ./example
