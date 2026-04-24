@@ -150,7 +150,7 @@
                 command = "buf lint";
               };
 
-              watch-all = pkgs.lib.mkWatchMany {
+              watch-all = pkgs.lib.mkWatch {
                 description = "Multiple watch tasks";
                 aliases = [ "wa" ];
                 watchers = [
