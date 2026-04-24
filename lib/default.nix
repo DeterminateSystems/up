@@ -96,5 +96,5 @@ in
 
   mkTool = import ./tool.nix { inherit lib mkScript pkgs; };
 
-  mkWatch = import ./watch.nix { inherit lib pkgs; };
+  inherit (import ./watch.nix { inherit lib pkgs; }) mkWatch mkWatchMany;
 }
