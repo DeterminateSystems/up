@@ -150,7 +150,7 @@
                 command = "buf lint";
               };
 
-              watch-all = pkgs.lib.mkWatch {
+              watch-all = pkgs.lib.mkWatchMany {
                 description = "Multiple watch tasks";
                 aliases = [ "wa" ];
                 watchers = [
@@ -211,7 +211,7 @@
       };
 
       schemas = {
-        inherit (inputs.flake-schemas.schemas) devShells schemas;
+        inherit (inputs.flake-schemas.schemas) devShells overlays schemas;
       }
       // {
         inherit (inputs.up.exportedSchemas) processTrees taskRunners;
