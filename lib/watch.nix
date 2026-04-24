@@ -1,11 +1,13 @@
 {
   lib,
+  mkProcessTree,
   pkgs,
 }:
 
 let
   mkWatchexecCmd =
     {
+      name ? "watch",
       command,
       paths ? [ "." ],
       extensions ? [ ],
@@ -80,48 +82,55 @@ let
 
   mkWatchMany =
     {
+      name ? "watch-all",
       watchers,
       package ? pkgs.watchexec,
       packages ? [ ],
-      exitMsg ? "Shutting down",
       ...
     }@args:
     assert lib.assertMsg (watchers != [ ]) "mkWatchMany: 'watchers' must not be empty";
     let
       taskModuleArgs = builtins.removeAttrs args [
+        "name"
         "watchers"
         "package"
         "packages"
-        "exitMsg"
       ];
 
-      # Resolve each watcher's package (explicit > shared default).
-      watchexecPkg = map (w: w // { package = w.package or package; }) watchers;
-      watcherCmds = map mkWatchexecCmd watchexecPkg;
-      watcherPackages = map (w: w.package) watchexecPkg;
+      # Resolve each watcher's package and give it a stable process name.
+      indexed = lib.imap0 (i: w: {
+        inherit i;
+        watcher = w // {
+          package = w.package or package;
+        };
+      }) watchers;
 
-      command = ''
-        pids=()
+      # Process name: either user-supplied `name`, or `watcher-<index>`.
+      processNameOf = { i, watcher }: watcher.name or "watcher-${toString i}";
 
-        shutdown() {
-          trap - INT TERM
-          echo "${exitMsg}" >&2
-          kill "''${pids[@]}" 2>/dev/null
-          wait "''${pids[@]}" 2>/dev/null
-        }
-        trap shutdown INT TERM
-
-        ${lib.concatMapStringsSep "\n" (c: "${c} & pids+=($!)") watcherCmds}
-
-        wait
-      '';
+      processes = lib.listToAttrs (
+        map (entry: {
+          name = processNameOf entry;
+          value = {
+            command = mkWatchexecCmd entry.watcher;
+            packages = [ entry.watcher.package ];
+          };
+        }) indexed
+      );
     in
     taskModuleArgs
     // {
       raw = true;
       skip = true;
-      packages = lib.unique (packages ++ watcherPackages);
-      inherit command;
+      command =
+        (mkProcessTree {
+          inherit
+            name
+            packages
+            processes
+            ;
+        })
+        + "/bin/${name}";
     };
 in
 {
