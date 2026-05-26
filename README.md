@@ -290,13 +290,13 @@ Here's an example:
 
 ### Benchmark tasks
 
-Up has a special function called `mkBenchmarkTask` that generates benchmarking tasks that use [hyperfine].
+Up has a special function called `mkBenchmark` that generates benchmarking tasks that use [hyperfine].
 Here's an example task:
 
 ```nix
 {
   run-benchmarks =
-    pkgs.up.mkBenchmarkTask {
+    pkgs.up.mkBenchmark {
       description = "Benchmark the CLI";
       after = [ "build" ];
       commands = [
