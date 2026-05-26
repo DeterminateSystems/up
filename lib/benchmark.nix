@@ -24,7 +24,7 @@
 
 assert lib.assertMsg (
   runs == null || (minRuns == null && maxRuns == null)
-) "mkBenchmarkTask: 'runs' and 'minRuns'/'maxRuns' are mutually exclusive";
+) "mkBenchmark: 'runs' and 'minRuns'/'maxRuns' are mutually exclusive";
 
 let
   esc = lib.escapeShellArg;

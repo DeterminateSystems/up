@@ -58,7 +58,7 @@ let
   taskModule = import ./task.nix { inherit lib mkScript pkgs; };
 in
 {
-  mkBenchmarkTask = import ./benchmark.nix {
+  mkBenchmark = import ./benchmark.nix {
     inherit
       lib
       pkgs

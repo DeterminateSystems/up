@@ -37,12 +37,12 @@
       lib = import ./lib;
 
       overlays.default = final: prev: {
-        lib =
-          prev.lib
-          // (self.lib {
-            inherit (prev) lib;
-            pkgs = prev;
-          });
+        up = (
+          import ./lib {
+            inherit (final) lib;
+            pkgs = final;
+          }
+        );
       };
 
       schemas = {
