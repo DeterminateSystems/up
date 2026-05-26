@@ -28,7 +28,7 @@ Here's an example:
   processTrees = forEachSupportedSystem (
     { pkgs, system }:
     {
-      postgres = pkgs.lib.mkProcessTree {
+      postgres = pkgs.up.mkProcessTree {
         description = "Run Postgres locally";
 
         packages = with pkgs; [
@@ -148,7 +148,7 @@ Here's how you can create a task runner in your flake:
   taskRunners = forEachSupportedSystem (
     { pkgs, system }:
     {
-      work = pkgs.lib.mkTaskRunner {
+      work = pkgs.up.mkTaskRunner {
         name = "work";
         description = "Run linters and formatters";
         packages = with pkgs; [
@@ -238,7 +238,7 @@ The function converts each task into a proper Bash script using [`writeShellAppl
 Here's an example:
 
 ```nix
-pkgs.lib.mkTaskRunner {
+pkgs.up.mkTaskRunner {
   name = "rt";
   description = "Rust development tasks 🦀";
   environment.RUST_LOG = "trace";
@@ -296,7 +296,7 @@ Here's an example task:
 ```nix
 {
   run-benchmarks =
-    pkgs.lib.mkBenchmarkTask {
+    pkgs.up.mkBenchmarkTask {
       description = "Benchmark the CLI";
       after = [ "build" ];
       commands = [
@@ -335,7 +335,7 @@ Here's an example task:
 
 ```nix
 {
-  rebuild-site = pkgs.lib.mkWatch {
+  rebuild-site = pkgs.up.mkWatch {
     description = "Rebuild site upon change";
     packages = [ pkgs.pnpm ];
     command = "pnpm run build";
@@ -392,7 +392,7 @@ Here's an example:
 
 ```nix
 let
-  procs = pkgs.lib.mkTool {
+  procs = pkgs.up.mkTool {
     name = "procs";
     tool = pkgs.bottom;
     args = [

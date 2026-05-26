@@ -12,14 +12,17 @@
   outputs =
     { self, ... }@inputs:
     let
+      inherit (inputs.nixpkgs) lib;
+
       supportedSystems = [
         "x86_64-linux"
         "aarch64-linux"
         "aarch64-darwin"
       ];
+
       forEachSupportedSystem =
         f:
-        inputs.nixpkgs.lib.genAttrs supportedSystems (
+        lib.genAttrs supportedSystems (
           system:
           f {
             inherit system;
@@ -51,7 +54,7 @@
       processTrees = forEachSupportedSystem (
         { pkgs, system }:
         {
-          dev = pkgs.lib.mkProcessTree {
+          dev = pkgs.up.mkProcessTree {
             name = "dev";
             aliases = [ "d" ];
 
@@ -93,7 +96,7 @@
       taskRunners = forEachSupportedSystem (
         { pkgs, ... }:
         {
-          proto = pkgs.lib.mkTaskRunner {
+          proto = pkgs.up.mkTaskRunner {
             name = "proto";
             description = "Protobuf-related tasks";
 
@@ -149,7 +152,7 @@
                 aliases = [ "l" ];
                 command = "buf lint";
               };
-              watch-gen = pkgs.lib.mkWatch {
+              watch-gen = pkgs.up.mkWatch {
                 description = "Regenerate stubs on .proto change";
                 aliases = [
                   "w"
